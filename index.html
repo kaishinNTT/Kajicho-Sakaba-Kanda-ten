@@ -1,71 +1,348 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Lịch Làm Việc</title>
+    <title>员工排班管理系统</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Firebase CDN - PHIÊN BẢN 9.23 (ỔN ĐỊNH) -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- html2canvas for image export -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <!-- Top Navigation for Mobile -->
+    <div class="mobile-nav">
+        <div class="nav-title">
+            <i class="fas fa-calendar-alt"></i>
+            <span>排班管理</span>
+        </div>
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <button onclick="switchTab('employees')"><i class="fas fa-users"></i> 员工管理</button>
+        <button onclick="switchTab('schedule')"><i class="fas fa-clock"></i> 添加班次</button>
+        <button onclick="switchTab('view')"><i class="fas fa-calendar"></i> 查看排班</button>
+        <button onclick="openExportModal()"><i class="fas fa-download"></i> 导出/打印</button>
+    </div>
+
     <div class="container">
-        <h1>📅 QUẢN LÝ LỊCH LÀM VIỆC</h1>
-        
-        <!-- Thông báo trạng thái -->
-        <div id="status" class="status">🟢 Đang kết nối Firebase...</div>
-        
-        <!-- PHẦN 1: THÊM NHÂN VIÊN -->
-        <div class="section">
-            <h2>👥 QUẢN LÝ NHÂN VIÊN</h2>
-            <div class="form-group">
-                <input type="text" id="employeeName" placeholder="Tên nhân viên">
-                <button onclick="addEmployee()">➕ Thêm Nhân Viên</button>
-            </div>
-            <div id="employeeList" class="list">
-                <!-- Danh sách nhân viên sẽ hiện ở đây -->
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-calendar-alt"></i> 员工排班管理系统</h1>
+            <div class="status" id="status">
+                <i class="fas fa-wifi"></i>
+                <span>连接中...</span>
             </div>
         </div>
-        
-        <!-- PHẦN 2: THÊM LỊCH LÀM -->
-        <div class="section">
-            <h2>⏰ THÊM LỊCH LÀM VIỆC</h2>
-            <div class="form-group">
-                <select id="selectEmployee">
-                    <option value="">-- Chọn nhân viên --</option>
-                </select>
-                <input type="date" id="workDate">
-                <input type="time" id="startTime" value="08:00">
-                <span>đến</span>
-                <input type="time" id="endTime" value="17:00">
-                <button onclick="addSchedule()">✅ Thêm Lịch Làm</button>
+
+        <!-- Tab Navigation -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="employees" onclick="switchTab('employees')">
+                <i class="fas fa-users"></i>
+                <span>员工管理</span>
+            </button>
+            <button class="tab-btn" data-tab="schedule" onclick="switchTab('schedule')">
+                <i class="fas fa-plus-circle"></i>
+                <span>添加班次</span>
+            </button>
+            <button class="tab-btn" data-tab="view" onclick="switchTab('view')">
+                <i class="fas fa-calendar-check"></i>
+                <span>查看排班</span>
+            </button>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <button class="quick-btn" onclick="openQuickAdd()">
+                <i class="fas fa-bolt"></i>
+                <span>快速添加</span>
+            </button>
+            <button class="quick-btn" onclick="addDayOff()">
+                <i class="fas fa-umbrella-beach"></i>
+                <span>添加休息</span>
+            </button>
+            <button class="quick-btn" onclick="exportEmployeeSchedule()">
+                <i class="fas fa-file-export"></i>
+                <span>导出排班</span>
+            </button>
+            <button class="quick-btn" onclick="printAllSchedule()">
+                <i class="fas fa-print"></i>
+                <span>打印全部</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: Employees Management -->
+        <div class="tab-content active" id="employeesTab">
+            <div class="card">
+                <h2><i class="fas fa-user-plus"></i> 添加新员工</h2>
+                <div class="form-row">
+                    <input type="text" id="employeeName" placeholder="员工姓名" class="form-input">
+                    <select id="employeePosition" class="form-select">
+                        <option value="">选择职位</option>
+                        <option value="前台/服务区">前台/服务区</option>
+                        <option value="厨房区">厨房区</option>
+                    </select>
+                    <button class="btn-primary" onclick="addEmployee()">
+                        <i class="fas fa-plus"></i> 添加员工
+                    </button>
+                </div>
+
+                <h2><i class="fas fa-list"></i> 员工列表</h2>
+                <div id="employeeList" class="employee-list">
+                    <!-- Employees will load here -->
+                </div>
             </div>
         </div>
-        
-        <!-- PHẦN 3: HIỂN THỊ LỊCH -->
-        <div class="section">
-            <h2>📋 LỊCH LÀM VIỆC HIỆN TẠI</h2>
-            <div id="scheduleList" class="schedule-container">
-                <!-- Lịch làm sẽ hiện ở đây -->
+
+        <!-- TAB 2: Add Schedule -->
+        <div class="tab-content" id="scheduleTab">
+            <div class="card">
+                <h2><i class="fas fa-clock"></i> 添加班次</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> 员工</label>
+                        <select id="selectEmployee" class="form-select">
+                            <option value="">选择员工</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar"></i> 日期</label>
+                        <input type="date" id="workDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-play-circle"></i> 开始时间</label>
+                        <input type="time" id="startTime" value="08:00" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-stop-circle"></i> 结束时间</label>
+                        <input type="time" id="endTime" value="17:00" class="form-input">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="addSchedule()">
+                        <i class="fas fa-check"></i> 添加班次
+                    </button>
+                    <button class="btn-secondary" onclick="addDayOff()">
+                        <i class="fas fa-umbrella-beach"></i> 设置为休息日
+                    </button>
+                    <button class="btn-success" onclick="quickAddWeek()">
+                        <i class="fas fa-calendar-week"></i> 添加整周班次
+                    </button>
+                </div>
             </div>
         </div>
-        
-        <!-- Hướng dẫn -->
-        <div class="info">
-            <h3>💡 HƯỚNG DẪN SỬ DỤNG:</h3>
-            <ul>
-                <li><strong>1.</strong> Thêm nhân viên TRƯỚC khi tạo lịch làm</li>
-                <li><strong>2.</strong> Chọn nhân viên → Chọn ngày → Chọn giờ → Thêm lịch</li>
-                <li><strong>3.</strong> Mọi thay đổi TỰ ĐỘNG đồng bộ trên tất cả thiết bị</li>
-                <li><strong>4.</strong> Mở app trên 2 thiết bị để kiểm tra đồng bộ realtime</li>
-            </ul>
+
+        <!-- TAB 3: View Schedule -->
+        <div class="tab-content" id="viewTab">
+            <div class="card">
+                <div class="filter-bar">
+                    <h2><i class="fas fa-filter"></i> 排班筛选</h2>
+                    <div class="filters">
+                        <select id="filterEmployee" class="filter-select" onchange="filterSchedules()">
+                            <option value="">所有员工</option>
+                        </select>
+                        <select id="filterPosition" class="filter-select" onchange="filterSchedules()">
+                            <option value="">所有职位</option>
+                            <option value="前台/服务区">前台/服务区</option>
+                            <option value="厨房区">厨房区</option>
+                        </select>
+                        <select id="filterWeek" class="filter-select" onchange="filterSchedules()">
+                            <option value="current">本周</option>
+                            <option value="next">下周</option>
+                            <option value="all">全部</option>
+                        </select>
+                        <button class="btn-small" onclick="resetFilters()">
+                            <i class="fas fa-redo"></i> 重置
+                        </button>
+                    </div>
+                </div>
+
+                <div id="scheduleList" class="schedule-list">
+                    <!-- Schedules will load here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Overview -->
+        <div class="card" id="weeklyOverview">
+            <h2><i class="fas fa-calendar-week"></i> 本周排班概览</h2>
+            <div id="weekSchedule" class="week-schedule">
+                <!-- Weekly schedule will load here -->
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <h3 id="totalEmployees">0</h3>
+                <p>总员工数</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-clock"></i>
+                <h3 id="totalShifts">0</h3>
+                <p>总班次数</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-user-clock"></i>
+                <h3 id="activeShifts">0</h3>
+                <p>今日班次</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-door-open"></i>
+                <h3 id="frontDesk">0</h3>
+                <p>前台/服务区</p>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-utensils"></i>
+                <h3 id="kitchen">0</h3>
+                <p>厨房区</p>
+            </div>
         </div>
     </div>
-    
+
+    <!-- MODALS -->
+    <!-- Employee Lookup Modal -->
+    <div id="lookupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-search"></i> 员工排班查询</h3>
+                <button class="modal-close" onclick="closeModal('lookupModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <select id="lookupEmployeeSelect" class="form-select">
+                    <option value="">选择员工</option>
+                </select>
+                <div id="lookupResult" class="lookup-result">
+                    <!-- Results will appear here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-export"></i> 导出/打印选项</h3>
+                <button class="modal-close" onclick="closeModal('exportModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <button class="export-btn" onclick="exportEmployeeSchedule()">
+                        <i class="fas fa-user"></i>
+                        <span>导出员工排班</span>
+                        <small>导出单个员工本周排班</small>
+                    </button>
+                    <button class="export-btn" onclick="printAllSchedule()">
+                        <i class="fas fa-users"></i>
+                        <span>打印全部排班</span>
+                        <small>打印所有员工排班表</small>
+                    </button>
+                    <button class="export-btn" onclick="exportWeeklyOverview()">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>导出周排班表</span>
+                        <small>导出本周完整排班表</small>
+                    </button>
+                    <button class="export-btn" onclick="exportByPosition()">
+                        <i class="fas fa-building"></i>
+                        <span>按职位导出</span>
+                        <small>按工作区域导出排班</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Modal -->
+    <div id="quickAddModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bolt"></i> 快速添加班次</h3>
+                <button class="modal-close" onclick="closeModal('quickAddModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="quick-add-grid">
+                    <div class="quick-option" onclick="quickAddShift('早班', '08:00', '16:00')">
+                        <i class="fas fa-sun"></i>
+                        <span>早班</span>
+                        <small>08:00 - 16:00</small>
+                    </div>
+                    <div class="quick-option" onclick="quickAddShift('中班', '12:00', '20:00')">
+                        <i class="fas fa-clock"></i>
+                        <span>中班</span>
+                        <small>12:00 - 20:00</small>
+                    </div>
+                    <div class="quick-option" onclick="quickAddShift('晚班', '16:00', '00:00')">
+                        <i class="fas fa-moon"></i>
+                        <span>晚班</span>
+                        <small>16:00 - 00:00</small>
+                    </div>
+                    <div class="quick-option" onclick="quickAddShift('全天班', '09:00', '21:00')">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>全天班</span>
+                        <small>09:00 - 21:00</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Schedule Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> 编辑班次</h3>
+                <button class="modal-close" onclick="closeModal('editModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>员工</label>
+                    <select id="editEmployee" class="form-select"></select>
+                </div>
+                <div class="form-group">
+                    <label>日期</label>
+                    <input type="date" id="editDate" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>开始时间</label>
+                    <input type="time" id="editStartTime" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label>结束时间</label>
+                    <input type="time" id="editEndTime" class="form-input">
+                </div>
+                <div class="button-group">
+                    <button class="btn-primary" onclick="updateSchedule()">
+                        <i class="fas fa-save"></i> 保存更改
+                    </button>
+                    <button class="btn-danger" onclick="deleteCurrentSchedule()">
+                        <i class="fas fa-trash"></i> 删除班次
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase Configuration -->
     <script>
-        // CẤU HÌNH FIREBASE CỦA BẠN
+        // YOUR FIREBASE CONFIGURATION
         const firebaseConfig = {
             apiKey: "AIzaSyB6C3s4EAPEx0GBLnBXAz4aYJfoCBEyofc",
             authDomain: "employee-schedule-893f5.firebaseapp.com",
@@ -76,27 +353,23 @@
             appId: "1:377051530021:web:e3341a1a7bcdc89ad810cc"
         };
         
-        // KHỞI TẠO FIREBASE
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-        
-        // TẠO BIẾN DATABASE TOÀN CỤC
         const database = firebase.database();
         
-        // KIỂM TRA KẾT NỐI
+        // Check Connection
         database.ref('.info/connected').on('value', (snap) => {
+            const status = document.getElementById('status');
             if (snap.val() === true) {
-                console.log("✅ Đã kết nối Firebase!");
-                document.getElementById('status').innerHTML = '🟢 Đang kết nối Firebase...';
-                document.getElementById('status').style.background = '#4CAF50';
+                status.innerHTML = '<i class="fas fa-wifi"></i><span>已连接</span>';
+                status.className = 'status connected';
             } else {
-                document.getElementById('status').innerHTML = '🔴 Mất kết nối Firebase';
-                document.getElementById('status').style.background = '#f44336';
+                status.innerHTML = '<i class="fas fa-wifi-slash"></i><span>连接断开</span>';
+                status.className = 'status disconnected';
             }
         });
-        
-        console.log("🔥 Firebase initialized!");
     </script>
-    
+
     <!-- Main JavaScript -->
     <script src="app.js"></script>
 </body>
