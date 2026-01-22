@@ -4,18 +4,14 @@ let schedules = {};
 let currentWeek = 0;
 let selectedEmployee = null;
 let selectedPosition = '前台/服务区';
+let currentPositionFilter = 'all';
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 智能排班系统启动");
     
     // 初始化日期
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('scheduleDate').value = today;
-    document.getElementById('scheduleDate').min = today;
-    
-    // 设置当前日期显示
-    updateCurrentDate();
+    initApp();
     
     // 加载数据
     loadEmployees();
@@ -25,16 +21,47 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
-function setupEventListeners() {
-    // 每周自动更新日期显示
-    setInterval(updateCurrentDate, 60000); // 每分钟更新一次
+function initApp() {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     
-    // 点击背景关闭模态框
-    document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            closeModal(event.target.id);
-        }
-    });
+    // 设置表单日期
+    document.getElementById('scheduleDate').value = todayStr;
+    document.getElementById('scheduleDate').min = todayStr;
+    document.getElementById('quickWeekDate').value = todayStr;
+    
+    // 初始化工作日选择器
+    initWeekdaysSelector();
+    
+    // 更新当前日期显示
+    updateCurrentDate();
+    
+    // 设置自动刷新日期
+    setInterval(updateCurrentDate, 60000);
+}
+
+function initWeekdaysSelector() {
+    const weekdays = [
+        { id: 1, label: '周一', default: true },
+        { id: 2, label: '周二', default: true },
+        { id: 3, label: '周三', default: true },
+        { id: 4, label: '周四', default: true },
+        { id: 5, label: '周五', default: true },
+        { id: 6, label: '周六', default: false },
+        { id: 0, label: '周日', default: false }
+    ];
+    
+    const container = document.getElementById('weekdaysSelector');
+    container.innerHTML = weekdays.map(day => `
+        <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
+                data-day="${day.id}" onclick="toggleWeekday(this)">
+            ${day.label}
+        </button>
+    `).join('');
+}
+
+function toggleWeekday(button) {
+    button.classList.toggle('active');
 }
 
 function updateCurrentDate() {
@@ -47,6 +74,39 @@ function updateCurrentDate() {
     };
     document.getElementById('currentDate').textContent = 
         now.toLocaleDateString('zh-CN', options);
+}
+
+function setupEventListeners() {
+    // 点击背景关闭模态框
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeModal(event.target.id);
+        }
+    });
+    
+    // 快捷键支持
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey || event.metaKey) {
+            switch(event.key.toLowerCase()) {
+                case 'e':
+                    if (selectedEmployee) {
+                        editEmployeeSchedule();
+                        event.preventDefault();
+                    }
+                    break;
+                case 'c':
+                    if (selectedEmployee) {
+                        copyEmployeeSchedule();
+                        event.preventDefault();
+                    }
+                    break;
+                case 's':
+                    refreshData();
+                    event.preventDefault();
+                    break;
+            }
+        }
+    });
 }
 
 // ==================== VIEW MANAGEMENT ====================
@@ -68,10 +128,16 @@ function switchView(viewName) {
     document.querySelector(`.nav-btn[data-view="${viewName}"]`).classList.add('active');
     
     // 视图特定的初始化
-    if (viewName === 'weekly') {
-        renderWeeklySchedule();
-    } else if (viewName === 'schedule') {
-        updateEmployeeSelect();
+    switch(viewName) {
+        case 'weekly':
+            renderWeeklySchedule();
+            break;
+        case 'schedule':
+            updateScheduleEmployeeSelect();
+            break;
+        case 'employees':
+            renderEmployeeCards();
+            break;
     }
 }
 
@@ -95,7 +161,7 @@ function loadEmployees() {
         }
         
         renderEmployeeCards();
-        updateEmployeeSelect();
+        updateAllEmployeeSelects();
     });
 }
 
@@ -104,9 +170,18 @@ function renderEmployeeCards() {
     const searchTerm = document.getElementById('employeeSearch')?.value.toLowerCase() || '';
     
     let filteredEmployees = employees;
+    
+    // 搜索过滤
     if (searchTerm) {
-        filteredEmployees = employees.filter(emp => 
+        filteredEmployees = filteredEmployees.filter(emp => 
             emp.name.toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    // 职位过滤
+    if (currentPositionFilter !== 'all') {
+        filteredEmployees = filteredEmployees.filter(emp => 
+            emp.position === currentPositionFilter
         );
     }
     
@@ -114,51 +189,90 @@ function renderEmployeeCards() {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-users"></i>
-                <p>${searchTerm ? '未找到员工' : '暂无员工'}</p>
+                <p>${searchTerm || currentPositionFilter !== 'all' ? '未找到员工' : '暂无员工'}</p>
+                <small>点击右上角 + 按钮添加员工</small>
             </div>
         `;
         return;
     }
     
-    // 按职位分组
-    const groupedEmployees = {
-        '前台/服务区': [],
-        '厨房区': []
-    };
-    
-    filteredEmployees.forEach(emp => {
-        groupedEmployees[emp.position].push(emp);
-    });
+    // 按职位分组排序
+    const frontDeskEmployees = filteredEmployees.filter(emp => emp.position === '前台/服务区');
+    const kitchenEmployees = filteredEmployees.filter(emp => emp.position === '厨房区');
     
     let html = '';
     
-    // 前台/服务区员工
-    if (groupedEmployees['前台/服务区'].length > 0) {
-        html += `<h3 style="margin: 20px 0 10px; color: #7209b7; font-size: 14px;">
+    if (frontDeskEmployees.length > 0) {
+        html += `
+            <div class="position-group">
+                <h3 class="position-title">
                     <i class="fas fa-door-open"></i> 前台/服务区
-                 </h3>`;
-        groupedEmployees['前台/服务区'].forEach(emp => {
-            html += generateEmployeeCard(emp);
-        });
+                    <span class="position-count">${frontDeskEmployees.length}人</span>
+                </h3>
+                <div class="position-cards">
+                    ${frontDeskEmployees.map(emp => generateEmployeeCard(emp)).join('')}
+                </div>
+            </div>
+        `;
     }
     
-    // 厨房区员工
-    if (groupedEmployees['厨房区'].length > 0) {
-        html += `<h3 style="margin: 20px 0 10px; color: #f8961e; font-size: 14px;">
+    if (kitchenEmployees.length > 0) {
+        html += `
+            <div class="position-group">
+                <h3 class="position-title">
                     <i class="fas fa-utensils"></i> 厨房区
-                 </h3>`;
-        groupedEmployees['厨房区'].forEach(emp => {
-            html += generateEmployeeCard(emp);
-        });
+                    <span class="position-count">${kitchenEmployees.length}人</span>
+                </h3>
+                <div class="position-cards">
+                    ${kitchenEmployees.map(emp => generateEmployeeCard(emp)).join('')}
+                </div>
+            </div>
+        `;
     }
     
     container.innerHTML = html;
+    
+    // 添加CSS样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .position-group {
+            margin-bottom: 24px;
+        }
+        .position-title {
+            font-size: 14px;
+            color: var(--gray);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .position-count {
+            margin-left: auto;
+            background: var(--light);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: var(--primary);
+        }
+        .position-cards {
+            display: grid;
+            gap: 12px;
+        }
+        @media (min-width: 768px) {
+            .position-cards {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            }
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 function generateEmployeeCard(employee) {
     const weeklyHours = calculateWeeklyHours(employee.id);
     const monthlyHours = calculateMonthlyHours(employee.id);
-    const thisWeekSchedule = getThisWeekSchedule(employee.id);
+    const weekSchedule = getThisWeekSchedule(employee.id);
     
     return `
         <div class="employee-card" onclick="showEmployeeDetail('${employee.id}')">
@@ -174,15 +288,17 @@ function generateEmployeeCard(employee) {
                 <div class="employee-stats">
                     <div class="stat-item">
                         <i class="fas fa-clock"></i>
-                        <span>本周: ${weeklyHours}h</span>
+                        <span>本周: </span>
+                        <span class="stat-value">${weeklyHours}h</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-calendar-alt"></i>
-                        <span>本月: ${monthlyHours}h</span>
+                        <span>本月: </span>
+                        <span class="stat-value">${monthlyHours}h</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-calendar-check"></i>
-                        <span>${thisWeekSchedule.workDays}天班</span>
+                        <span>${weekSchedule.workDays}天班</span>
                     </div>
                 </div>
             </div>
@@ -194,6 +310,15 @@ function generateEmployeeCard(employee) {
 }
 
 function searchEmployees() {
+    renderEmployeeCards();
+}
+
+function filterEmployees(position) {
+    currentPositionFilter = position;
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`.filter-btn${position === 'all' ? '' : `[onclick*="${position}"]`}`).classList.add('active');
     renderEmployeeCards();
 }
 
@@ -217,38 +342,38 @@ function showEmployeeDetail(employeeId) {
     // 显示本周排班
     showEmployeeWeekSchedule(employeeId);
     
-    // 显示模态框
     openModal('employeeModal');
 }
 
 function showEmployeeWeekSchedule(employeeId) {
-    const { startDate, endDate } = getWeekDates(currentWeek);
-    const weekSchedule = getEmployeeSchedulesForWeek(employeeId, startDate, endDate);
+    const { startDate } = getWeekDates(0);
+    const weekSchedule = getEmployeeSchedulesForWeek(employeeId, startDate, new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000));
+    
+    const container = document.getElementById('employeeWeekDays');
     const days = generateWeekDays(startDate);
     
-    const container = document.getElementById('employeeWeekSchedule');
-    container.innerHTML = `
-        <div style="margin-bottom: 16px; font-weight: 500; color: var(--dark);">
-            本周排班 (${formatDateRange(startDate, endDate)})
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
-            ${days.map(day => {
-                const schedule = weekSchedule.find(s => s.date === day.dateString);
-                return `
-                    <div style="text-align: center; padding: 8px; background: ${schedule ? (schedule.isDayOff ? '#fff7ed' : '#f0f9ff') : '#f8fafc'}; 
-                         border: 1px solid ${schedule ? (schedule.isDayOff ? '#fed7aa' : '#bae6fd') : '#e2e8f0'}; 
-                         border-radius: 6px;">
-                        <div style="font-size: 12px; color: var(--gray);">${day.name}</div>
-                        <div style="font-size: 11px; margin: 4px 0; font-weight: 500;">
-                            ${schedule ? (schedule.isDayOff ? '休息' : schedule.startTime.substring(0, 5)) : '无'}
-                        </div>
-                        ${schedule && !schedule.isDayOff ? 
-                            `<div style="font-size: 10px; color: var(--gray);">${schedule.endTime.substring(0, 5)}</div>` : ''}
-                    </div>
-                `;
-            }).join('')}
-        </div>
-    `;
+    container.innerHTML = days.map(day => {
+        const schedule = weekSchedule.find(s => s.date === day.dateString);
+        let status = 'none';
+        let timeText = '';
+        
+        if (schedule) {
+            status = schedule.isDayOff ? 'rest' : 'work';
+            timeText = schedule.isDayOff ? '' : `
+                <div style="font-size: 11px; margin-top: 4px; font-weight: 600;">
+                    ${schedule.startTime.substring(0, 5)}-${schedule.endTime.substring(0, 5)}
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="week-day ${status}">
+                <div style="font-weight: 500;">${day.name}</div>
+                <div style="font-size: 11px; opacity: 0.8;">${day.date}</div>
+                ${timeText}
+            </div>
+        `;
+    }).join('');
 }
 
 function showAddEmployee() {
@@ -275,11 +400,14 @@ function addEmployee() {
     
     if (!name) {
         showMessage('请输入员工姓名', 'warning');
+        nameInput.focus();
         return;
     }
     
+    // 检查是否已存在
     if (employees.some(e => e.name.toLowerCase() === name.toLowerCase())) {
-        showMessage('员工已存在', 'warning');
+        showMessage(`员工 "${name}" 已存在`, 'warning');
+        nameInput.focus();
         return;
     }
     
@@ -298,8 +426,62 @@ function addEmployee() {
     });
 }
 
-function updateEmployeeSelect() {
+function deleteCurrentEmployee() {
+    if (!selectedEmployee) return;
+    
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+    
+    if (!confirm(`确定要删除员工 "${employee.name}" 吗？\n此操作将同时删除该员工的所有排班记录！`)) {
+        return;
+    }
+    
+    // 删除员工
+    database.ref(`employees/${selectedEmployee}`).remove()
+    .then(() => {
+        // 删除该员工的所有排班
+        const schedulesRef = database.ref('schedules');
+        schedulesRef.once('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                Object.keys(data).forEach(scheduleId => {
+                    if (data[scheduleId].employeeId === selectedEmployee) {
+                        database.ref(`schedules/${scheduleId}`).remove();
+                    }
+                });
+            }
+        });
+        
+        closeModal('employeeModal');
+        showMessage(`员工 ${employee.name} 已删除`, 'success');
+        selectedEmployee = null;
+    })
+    .catch(error => {
+        showMessage('删除失败: ' + error.message, 'error');
+    });
+}
+
+function updateAllEmployeeSelects() {
+    updateScheduleEmployeeSelect();
+    updateQuickWeekEmployeeSelect();
+}
+
+function updateScheduleEmployeeSelect() {
     const select = document.getElementById('scheduleEmployee');
+    select.innerHTML = '<option value="">选择员工</option>';
+    
+    employees.sort((a, b) => a.name.localeCompare(b.name)).forEach(emp => {
+        const option = document.createElement('option');
+        option.value = emp.id;
+        option.textContent = `${emp.name} (${emp.position})`;
+        select.appendChild(option);
+    });
+}
+
+function updateQuickWeekEmployeeSelect() {
+    const select = document.getElementById('quickWeekEmployee');
+    if (!select) return;
+    
     select.innerHTML = '<option value="">选择员工</option>';
     
     employees.sort((a, b) => a.name.localeCompare(b.name)).forEach(emp => {
@@ -317,11 +499,11 @@ function loadSchedules() {
     schedulesRef.on('value', (snapshot) => {
         schedules = snapshot.val() || {};
         renderWeeklySchedule();
-        updateTodaysSchedule();
+        renderEmployeeCards(); // 更新工时显示
     });
 }
 
-function selectType(type) {
+function selectScheduleType(type) {
     document.querySelectorAll('.type-btn').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -335,7 +517,7 @@ function addSchedule() {
     const endTime = document.getElementById('scheduleEnd').value;
     const type = document.querySelector('.type-btn.active').dataset.type;
     
-    // 验证
+    // 验证输入
     if (!employeeId) {
         showMessage('请选择员工', 'warning');
         return;
@@ -346,23 +528,27 @@ function addSchedule() {
         return;
     }
     
-    if (type === 'work' && (!startTime || !endTime)) {
-        showMessage('请填写工作时间', 'warning');
-        return;
-    }
-    
-    if (type === 'work' && startTime >= endTime) {
-        showMessage('结束时间必须晚于开始时间', 'warning');
-        return;
-    }
-    
     const employee = employees.find(e => e.id === employeeId);
-    if (!employee) return;
+    if (!employee) {
+        showMessage('员工不存在', 'error');
+        return;
+    }
+    
+    if (type === 'work') {
+        if (!startTime || !endTime) {
+            showMessage('请填写工作时间', 'warning');
+            return;
+        }
+        
+        if (startTime >= endTime) {
+            showMessage('结束时间必须晚于开始时间', 'warning');
+            document.getElementById('scheduleEnd').focus();
+            return;
+        }
+    }
     
     // 检查是否已有排班
-    const existingSchedule = Object.values(schedules).find(s => 
-        s.employeeId === employeeId && s.date === date
-    );
+    const existingSchedule = findScheduleByEmployeeAndDate(employeeId, date);
     
     const scheduleData = {
         employeeId: employeeId,
@@ -384,14 +570,14 @@ function addSchedule() {
     
     if (existingSchedule) {
         // 更新现有排班
-        const scheduleId = Object.keys(schedules).find(key => 
-            schedules[key].employeeId === employeeId && schedules[key].date === date
-        );
-        
+        const scheduleId = existingSchedule.id;
         database.ref(`schedules/${scheduleId}`).update(scheduleData)
         .then(() => {
             resetScheduleForm();
             showMessage('排班更新成功', 'success');
+        })
+        .catch(error => {
+            showMessage('更新失败: ' + error.message, 'error');
         });
     } else {
         // 添加新排班
@@ -401,6 +587,9 @@ function addSchedule() {
         .then(() => {
             resetScheduleForm();
             showMessage('排班添加成功', 'success');
+        })
+        .catch(error => {
+            showMessage('添加失败: ' + error.message, 'error');
         });
     }
 }
@@ -410,21 +599,54 @@ function resetScheduleForm() {
     document.getElementById('scheduleDate').value = today;
     document.getElementById('scheduleStart').value = '08:00';
     document.getElementById('scheduleEnd').value = '17:00';
-    selectType('work');
+    selectScheduleType('work');
 }
 
-function quickWeekSchedule() {
-    const employeeId = document.getElementById('scheduleEmployee').value;
-    const startTime = document.getElementById('scheduleStart').value;
-    const endTime = document.getElementById('scheduleEnd').value;
+function findScheduleByEmployeeAndDate(employeeId, date) {
+    const scheduleEntry = Object.entries(schedules).find(([id, schedule]) => 
+        schedule.employeeId === employeeId && schedule.date === date
+    );
+    
+    if (scheduleEntry) {
+        return { id: scheduleEntry[0], ...scheduleEntry[1] };
+    }
+    return null;
+}
+
+function showQuickWeekModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('quickWeekDate').value = today;
+    document.getElementById('quickWeekStart').value = '08:00';
+    document.getElementById('quickWeekEnd').value = '17:00';
+    
+    // 重置工作日选择器
+    document.querySelectorAll('.weekday-btn').forEach(btn => {
+        const day = parseInt(btn.dataset.day);
+        btn.classList.toggle('active', day >= 1 && day <= 5); // 周一到周五默认选中
+    });
+    
+    updateQuickWeekEmployeeSelect();
+    openModal('quickWeekModal');
+}
+
+function applyQuickWeekSchedule() {
+    const employeeId = document.getElementById('quickWeekEmployee').value;
+    const startDate = document.getElementById('quickWeekDate').value;
+    const startTime = document.getElementById('quickWeekStart').value;
+    const endTime = document.getElementById('quickWeekEnd').value;
     
     if (!employeeId) {
-        showMessage('请先选择员工', 'warning');
+        showMessage('请选择员工', 'warning');
+        return;
+    }
+    
+    if (!startDate) {
+        showMessage('请选择开始日期', 'warning');
         return;
     }
     
     if (!startTime || !endTime) {
-        showMessage('请先设置工作时间', 'warning');
+        showMessage('请填写工作时间', 'warning');
         return;
     }
     
@@ -433,75 +655,74 @@ function quickWeekSchedule() {
         return;
     }
     
-    const employee = employees.find(e => e.id === employeeId);
-    if (!employee) return;
+    const selectedDays = [];
+    document.querySelectorAll('.weekday-btn.active').forEach(btn => {
+        selectedDays.push(parseInt(btn.dataset.day));
+    });
     
-    if (!confirm(`为 ${employee.name} 设置整周排班?\n工作日: ${startTime}-${endTime}`)) {
+    if (selectedDays.length === 0) {
+        showMessage('请至少选择一个工作日', 'warning');
         return;
     }
     
-    const { startDate } = getWeekDates(0);
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee) return;
+    
+    const baseDate = new Date(startDate);
     const promises = [];
     
-    // 周一到周五上班，周末休息
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        const dateString = date.toISOString().split('T')[0];
-        
-        // 跳过过去的日期
-        if (date < new Date()) continue;
-        
-        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-        
-        const scheduleData = {
-            employeeId: employeeId,
-            employeeName: employee.name,
-            employeePosition: employee.position,
-            date: dateString,
-            createdAt: Date.now()
-        };
-        
-        if (isWeekend) {
-            // 周末休息
-            Object.assign(scheduleData, {
-                startTime: '00:00',
-                endTime: '00:00',
-                isDayOff: true,
-                notes: '周末休息'
-            });
-        } else {
-            // 工作日上班
-            Object.assign(scheduleData, {
-                startTime: startTime,
-                endTime: endTime,
-                isDayOff: false
-            });
-        }
-        
-        // 检查是否已有排班
-        const existingSchedule = Object.values(schedules).find(s => 
-            s.employeeId === employeeId && s.date === dateString
-        );
-        
-        if (existingSchedule) {
-            const scheduleId = Object.keys(schedules).find(key => 
-                schedules[key].employeeId === employeeId && schedules[key].date === dateString
-            );
+    // 为接下来4周设置排班
+    for (let week = 0; week < 4; week++) {
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(baseDate);
+            date.setDate(baseDate.getDate() + (week * 7) + i);
             
-            promises.push(
-                database.ref(`schedules/${scheduleId}`).update(scheduleData)
-            );
-        } else {
-            promises.push(
-                database.ref('schedules').push().set(scheduleData)
-            );
+            // 跳过过去的日期
+            if (date < new Date()) continue;
+            
+            const dateString = date.toISOString().split('T')[0];
+            const dayOfWeek = date.getDay();
+            const isSelectedDay = selectedDays.includes(dayOfWeek);
+            
+            const scheduleData = {
+                employeeId: employeeId,
+                employeeName: employee.name,
+                employeePosition: employee.position,
+                date: dateString,
+                isDayOff: !isSelectedDay,
+                updatedAt: Date.now()
+            };
+            
+            if (isSelectedDay) {
+                scheduleData.startTime = startTime;
+                scheduleData.endTime = endTime;
+            } else {
+                scheduleData.startTime = '00:00';
+                scheduleData.endTime = '00:00';
+                scheduleData.notes = '休息日';
+            }
+            
+            const existingSchedule = findScheduleByEmployeeAndDate(employeeId, dateString);
+            
+            if (existingSchedule) {
+                // 更新现有排班
+                promises.push(
+                    database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
+                );
+            } else {
+                // 添加新排班
+                scheduleData.createdAt = Date.now();
+                promises.push(
+                    database.ref('schedules').push().set(scheduleData)
+                );
+            }
         }
     }
     
     Promise.all(promises)
     .then(() => {
-        showMessage('整周排班设置成功', 'success');
+        closeModal('quickWeekModal');
+        showMessage('快速整周排班设置成功', 'success');
     })
     .catch(error => {
         showMessage('设置失败: ' + error.message, 'error');
@@ -515,7 +736,7 @@ function renderWeeklySchedule() {
     const weekSchedule = getWeekSchedules(startDate, endDate);
     const days = generateWeekDays(startDate);
     
-    // 按员工分组
+    // 按员工分组排班
     const schedulesByEmployee = {};
     weekSchedule.forEach(schedule => {
         if (!schedulesByEmployee[schedule.employeeId]) {
@@ -527,7 +748,7 @@ function renderWeeklySchedule() {
     // 生成表头
     let html = `
         <div class="week-header">
-            <div class="week-header-cell">员工</div>
+            <div class="week-header-cell">员工 / 职位</div>
             ${days.map(day => `
                 <div class="week-header-cell">
                     <div>${day.name}</div>
@@ -540,12 +761,16 @@ function renderWeeklySchedule() {
     // 生成员工行
     employees.forEach(employee => {
         const employeeSchedules = schedulesByEmployee[employee.id] || {};
+        const weeklyHours = calculateWeeklyHours(employee.id);
         
         html += `
             <div class="week-row">
                 <div class="week-cell">
                     <div style="font-weight: 500; font-size: 14px;">${employee.name}</div>
-                    <div style="font-size: 12px; color: var(--gray);">${employee.position}</div>
+                    <div style="font-size: 12px; color: var(--gray); margin-bottom: 4px;">${employee.position}</div>
+                    <div style="font-size: 11px; color: var(--primary);">
+                        <i class="fas fa-clock" style="font-size: 10px;"></i> 本周: ${weeklyHours}h
+                    </div>
                 </div>
                 ${days.map(day => {
                     const schedule = employeeSchedules[day.dateString];
@@ -558,14 +783,18 @@ function renderWeeklySchedule() {
                             scheduleText = '休息';
                         } else {
                             scheduleClass = 'work';
-                            scheduleText = `${schedule.startTime.substring(0, 5)}<br>${schedule.endTime.substring(0, 5)}`;
+                            scheduleText = `
+                                <div>${schedule.startTime.substring(0, 5)}</div>
+                                <div class="day-time">${schedule.endTime.substring(0, 5)}</div>
+                            `;
                         }
                     }
                     
                     return `
                         <div class="week-cell">
                             <div class="day-schedule-item ${scheduleClass}" 
-                                 onclick="editDaySchedule('${employee.id}', '${day.dateString}')">
+                                 onclick="editDaySchedule('${employee.id}', '${day.dateString}')"
+                                 title="${schedule ? (schedule.isDayOff ? '休息日' : `${schedule.startTime}-${schedule.endTime}`) : '点击添加排班'}">
                                 ${scheduleText || '点击添加'}
                             </div>
                         </div>
@@ -575,11 +804,11 @@ function renderWeeklySchedule() {
         `;
     });
     
-    container.innerHTML = html;
+    container.innerHTML = html || '<div class="empty-state"><p>暂无排班数据</p></div>';
     
     // 更新周范围显示
-    document.getElementById('weekRange').textContent = 
-        `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    const weekRange = document.getElementById('weekRange');
+    weekRange.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
 
 function changeWeek(direction) {
@@ -591,78 +820,98 @@ function editDaySchedule(employeeId, date) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
     
-    const schedule = Object.values(schedules).find(s => 
-        s.employeeId === employeeId && s.date === date
-    );
+    const schedule = findScheduleByEmployeeAndDate(employeeId, date);
     
     const container = document.getElementById('editScheduleContent');
     container.innerHTML = `
-        <div style="margin-bottom: 20px;">
-            <div style="font-weight: 500; margin-bottom: 8px;">${employee.name}</div>
-            <div style="color: var(--gray); font-size: 14px;">${formatDate(date)} ${getDayName(new Date(date))}</div>
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <div style="font-size: 14px; margin-bottom: 12px; color: var(--dark);">排班类型</div>
-            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <button onclick="updateDayScheduleType('${employeeId}', '${date}', 'work')" 
-                        style="flex: 1; padding: 16px; border: 2px solid ${!schedule || !schedule.isDayOff ? 'var(--primary)' : 'var(--border)'}; 
-                               background: ${!schedule || !schedule.isDayOff ? 'var(--primary-light)' : 'white'}; 
-                               border-radius: 8px; cursor: pointer;">
-                    <i class="fas fa-briefcase" style="color: ${!schedule || !schedule.isDayOff ? 'var(--primary)' : 'var(--gray)'}; 
-                                                          font-size: 20px; margin-bottom: 8px;"></i>
-                    <div style="font-weight: 500; color: ${!schedule || !schedule.isDayOff ? 'var(--primary)' : 'var(--dark)'};">上班</div>
-                </button>
-                <button onclick="updateDayScheduleType('${employeeId}', '${date}', 'rest')" 
-                        style="flex: 1; padding: 16px; border: 2px solid ${schedule && schedule.isDayOff ? 'var(--warning)' : 'var(--border)'}; 
-                               background: ${schedule && schedule.isDayOff ? '#fff7ed' : 'white'}; 
-                               border-radius: 8px; cursor: pointer;">
-                    <i class="fas fa-umbrella-beach" style="color: ${schedule && schedule.isDayOff ? 'var(--warning)' : 'var(--gray)'}; 
-                                                            font-size: 20px; margin-bottom: 8px;"></i>
-                    <div style="font-weight: 500; color: ${schedule && schedule.isDayOff ? 'var(--warning)' : 'var(--dark)'};">休息</div>
-                </button>
-            </div>
-        </div>
-        
-        ${(!schedule || !schedule.isDayOff) ? `
-            <div style="margin-bottom: 20px;">
-                <div style="font-size: 14px; margin-bottom: 12px; color: var(--dark);">工作时间</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="edit-schedule-form">
+            <div class="form-group">
+                <label>员工</label>
+                <div class="employee-display">
+                    <div class="employee-avatar-small">${employee.name.charAt(0)}</div>
                     <div>
-                        <div style="font-size: 13px; margin-bottom: 8px; color: var(--gray);">开始时间</div>
-                        <input type="time" id="editStartTime" value="${schedule ? schedule.startTime : '08:00'}" 
-                               style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px;"
-                               onchange="updateWorkTime('${employeeId}', '${date}', 'start', this.value)">
-                    </div>
-                    <div>
-                        <div style="font-size: 13px; margin-bottom: 8px; color: var(--gray);">结束时间</div>
-                        <input type="time" id="editEndTime" value="${schedule ? schedule.endTime : '17:00'}" 
-                               style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px;"
-                               onchange="updateWorkTime('${employeeId}', '${date}', 'end', this.value)">
+                        <div style="font-weight: 500;">${employee.name}</div>
+                        <div style="font-size: 14px; color: var(--gray);">${employee.position}</div>
                     </div>
                 </div>
             </div>
-        ` : ''}
-        
-        <div style="display: flex; gap: 12px; margin-top: 24px;">
-            <button onclick="deleteDaySchedule('${employeeId}', '${date}')" 
-                    style="flex: 1; padding: 14px; background: #fee2e2; border: 1px solid #fecaca; 
-                           color: #dc2626; border-radius: 8px; font-weight: 500; cursor: pointer;">
-                <i class="fas fa-trash"></i> 删除
-            </button>
-            <button onclick="closeModal('editModal')" 
-                    style="flex: 1; padding: 14px; background: var(--light); border: 1px solid var(--border); 
-                           color: var(--dark); border-radius: 8px; font-weight: 500; cursor: pointer;">
-                关闭
-            </button>
+            
+            <div class="form-group">
+                <label>日期</label>
+                <div class="date-display">
+                    <div style="font-weight: 500;">${formatDate(date)}</div>
+                    <div style="font-size: 14px; color: var(--gray);">${getDayName(new Date(date))}</div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>排班类型</label>
+                <div class="type-selector">
+                    <button class="type-btn ${!schedule || !schedule.isDayOff ? 'active' : ''}" 
+                            onclick="setEditScheduleType('work')">
+                        <i class="fas fa-briefcase"></i>
+                        <span>上班</span>
+                    </button>
+                    <button class="type-btn ${schedule && schedule.isDayOff ? 'active' : ''}"
+                            onclick="setEditScheduleType('rest')">
+                        <i class="fas fa-umbrella-beach"></i>
+                        <span>休息</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="time-group" id="editTimeGroup" style="display: ${!schedule || !schedule.isDayOff ? 'grid' : 'none'}">
+                <div class="form-group">
+                    <label>开始时间</label>
+                    <input type="time" id="editStartTime" class="input-field" 
+                           value="${schedule && !schedule.isDayOff ? schedule.startTime : '08:00'}">
+                </div>
+                <div class="form-group">
+                    <label>结束时间</label>
+                    <input type="time" id="editEndTime" class="input-field" 
+                           value="${schedule && !schedule.isDayOff ? schedule.endTime : '17:00'}">
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn-primary" onclick="saveDaySchedule('${employeeId}', '${date}')">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+                ${schedule ? `
+                    <button class="btn-danger" onclick="deleteDaySchedule('${employeeId}', '${date}')">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                ` : ''}
+                <button class="btn-secondary" onclick="closeModal('editModal')">
+                    取消
+                </button>
+            </div>
         </div>
     `;
     
     openModal('editModal');
 }
 
-function updateDayScheduleType(employeeId, date, type) {
+function setEditScheduleType(type) {
+    const timeGroup = document.getElementById('editTimeGroup');
+    const workBtn = document.querySelector('.type-btn:first-child');
+    const restBtn = document.querySelector('.type-btn:last-child');
+    
+    if (type === 'work') {
+        workBtn.classList.add('active');
+        restBtn.classList.remove('active');
+        timeGroup.style.display = 'grid';
+    } else {
+        restBtn.classList.add('active');
+        workBtn.classList.remove('active');
+        timeGroup.style.display = 'none';
+    }
+}
+
+function saveDaySchedule(employeeId, date) {
+    const type = document.querySelector('.type-btn.active').dataset.type;
     const employee = employees.find(e => e.id === employeeId);
+    
     if (!employee) return;
     
     const scheduleData = {
@@ -675,8 +924,19 @@ function updateDayScheduleType(employeeId, date, type) {
     };
     
     if (type === 'work') {
-        const startTime = document.getElementById('editStartTime')?.value || '08:00';
-        const endTime = document.getElementById('editEndTime')?.value || '17:00';
+        const startTime = document.getElementById('editStartTime').value;
+        const endTime = document.getElementById('editEndTime').value;
+        
+        if (!startTime || !endTime) {
+            showMessage('请填写工作时间', 'warning');
+            return;
+        }
+        
+        if (startTime >= endTime) {
+            showMessage('结束时间必须晚于开始时间', 'warning');
+            return;
+        }
+        
         scheduleData.startTime = startTime;
         scheduleData.endTime = endTime;
     } else {
@@ -685,69 +945,46 @@ function updateDayScheduleType(employeeId, date, type) {
         scheduleData.notes = '休息日';
     }
     
-    const existingSchedule = Object.values(schedules).find(s => 
-        s.employeeId === employeeId && s.date === date
-    );
+    const existingSchedule = findScheduleByEmployeeAndDate(employeeId, date);
     
     if (existingSchedule) {
-        const scheduleId = Object.keys(schedules).find(key => 
-            schedules[key].employeeId === employeeId && schedules[key].date === date
-        );
-        
-        database.ref(`schedules/${scheduleId}`).update(scheduleData)
+        // 更新现有排班
+        database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
         .then(() => {
             closeModal('editModal');
             showMessage('排班更新成功', 'success');
+        })
+        .catch(error => {
+            showMessage('更新失败: ' + error.message, 'error');
         });
     } else {
+        // 添加新排班
         scheduleData.createdAt = Date.now();
         
         database.ref('schedules').push().set(scheduleData)
         .then(() => {
             closeModal('editModal');
             showMessage('排班添加成功', 'success');
+        })
+        .catch(error => {
+            showMessage('添加失败: ' + error.message, 'error');
         });
     }
 }
 
-function updateWorkTime(employeeId, date, timeType, timeValue) {
-    const schedule = Object.values(schedules).find(s => 
-        s.employeeId === employeeId && s.date === date
-    );
-    
-    if (!schedule || schedule.isDayOff) return;
-    
-    const scheduleId = Object.keys(schedules).find(key => 
-        schedules[key].employeeId === employeeId && schedules[key].date === date
-    );
-    
-    const updateData = {};
-    updateData[timeType === 'start' ? 'startTime' : 'endTime'] = timeValue;
-    updateData.updatedAt = Date.now();
-    
-    database.ref(`schedules/${scheduleId}`).update(updateData)
-    .then(() => {
-        showMessage('时间更新成功', 'success');
-    });
-}
-
 function deleteDaySchedule(employeeId, date) {
-    if (!confirm('确定删除这个排班吗？')) return;
+    if (!confirm('确定要删除这个排班吗？')) return;
     
-    const schedule = Object.values(schedules).find(s => 
-        s.employeeId === employeeId && s.date === date
-    );
-    
+    const schedule = findScheduleByEmployeeAndDate(employeeId, date);
     if (!schedule) return;
     
-    const scheduleId = Object.keys(schedules).find(key => 
-        schedules[key].employeeId === employeeId && schedules[key].date === date
-    );
-    
-    database.ref(`schedules/${scheduleId}`).remove()
+    database.ref(`schedules/${schedule.id}`).remove()
     .then(() => {
         closeModal('editModal');
         showMessage('排班已删除', 'success');
+    })
+    .catch(error => {
+        showMessage('删除失败: ' + error.message, 'error');
     });
 }
 
@@ -756,42 +993,62 @@ function showTodaySchedule() {
     const today = new Date().toISOString().split('T')[0];
     const todaySchedules = Object.values(schedules).filter(s => s.date === today);
     
-    const container = document.getElementById('todaySchedule');
+    const container = document.getElementById('todayList');
     
     if (todaySchedules.length === 0) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 40px 20px; color: var(--gray);">
-                <i class="fas fa-calendar" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+            <div class="empty-state">
+                <i class="fas fa-calendar-day"></i>
                 <p>今日暂无排班</p>
+                <small>可以切换到"排班"页面添加今日排班</small>
             </div>
         `;
     } else {
-        container.innerHTML = todaySchedules.map(schedule => {
-            const employee = employees.find(e => e.id === schedule.employeeId);
-            if (!employee) return '';
-            
-            return `
-                <div class="today-item ${schedule.isDayOff ? 'rest' : 'work'}">
-                    <div>
-                        <div style="font-weight: 500;">${employee.name}</div>
-                        <div style="font-size: 13px; color: var(--gray);">${employee.position}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: 500; color: ${schedule.isDayOff ? 'var(--warning)' : 'var(--success)'}">
-                            ${schedule.isDayOff ? '休息日' : `${schedule.startTime.substring(0, 5)} - ${schedule.endTime.substring(0, 5)}`}
-                        </div>
-                        <div style="font-size: 12px; color: var(--gray);">今日</div>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        // 按职位分组
+        const frontDeskSchedules = todaySchedules.filter(s => s.employeePosition === '前台/服务区');
+        const kitchenSchedules = todaySchedules.filter(s => s.employeePosition === '厨房区');
+        
+        let html = '';
+        
+        if (frontDeskSchedules.length > 0) {
+            html += `<h4 style="margin-bottom: 12px; color: #7209b7;"><i class="fas fa-door-open"></i> 前台/服务区</h4>`;
+            html += frontDeskSchedules.map(schedule => createTodayItem(schedule)).join('');
+        }
+        
+        if (kitchenSchedules.length > 0) {
+            html += `<h4 style="margin-top: 20px; margin-bottom: 12px; color: #f8961e;"><i class="fas fa-utensils"></i> 厨房区</h4>`;
+            html += kitchenSchedules.map(schedule => createTodayItem(schedule)).join('');
+        }
+        
+        container.innerHTML = html;
     }
     
     openModal('todayModal');
 }
 
-function showEmployeeStats() {
-    const container = document.getElementById('statsContent');
+function createTodayItem(schedule) {
+    return `
+        <div class="today-item ${schedule.isDayOff ? 'rest' : 'work'}">
+            <div>
+                <div style="font-weight: 500;">${schedule.employeeName}</div>
+                <div style="font-size: 13px; color: var(--gray);">${schedule.employeePosition}</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight: 500; color: ${schedule.isDayOff ? 'var(--warning)' : 'var(--success)'}">
+                    ${schedule.isDayOff ? '休息日' : `${schedule.startTime.substring(0, 5)} - ${schedule.endTime.substring(0, 5)}`}
+                </div>
+                ${!schedule.isDayOff ? `
+                    <div style="font-size: 12px; color: var(--gray);">
+                        工时: ${calculateShiftHours(schedule.startTime, schedule.endTime)}h
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function showStats() {
+    const container = document.getElementById('statsGrid');
     
     // 计算统计数据
     const totalEmployees = employees.length;
@@ -799,6 +1056,9 @@ function showEmployeeStats() {
     const today = new Date().toISOString().split('T')[0];
     const todayShifts = Object.values(schedules).filter(s => s.date === today && !s.isDayOff).length;
     const weekHours = employees.reduce((sum, emp) => sum + calculateWeeklyHours(emp.id), 0);
+    const monthHours = employees.reduce((sum, emp) => sum + calculateMonthlyHours(emp.id), 0);
+    const frontDeskCount = employees.filter(e => e.position === '前台/服务区').length;
+    const kitchenCount = employees.filter(e => e.position === '厨房区').length;
     
     container.innerHTML = `
         <div class="stat-card">
@@ -814,16 +1074,24 @@ function showEmployeeStats() {
             <p>今日班次</p>
         </div>
         <div class="stat-card">
-            <h4>${weekHours}</h4>
+            <h4>${weekHours}h</h4>
             <p>本周总工时</p>
         </div>
         <div class="stat-card">
-            <h4>${employees.filter(e => e.position === '前台/服务区').length}</h4>
+            <h4>${monthHours}h</h4>
+            <p>本月总工时</p>
+        </div>
+        <div class="stat-card">
+            <h4>${frontDeskCount}</h4>
             <p>前台/服务区</p>
         </div>
         <div class="stat-card">
-            <h4>${employees.filter(e => e.position === '厨房区').length}</h4>
+            <h4>${kitchenCount}</h4>
             <p>厨房区</p>
+        </div>
+        <div class="stat-card">
+            <h4>${Math.round(weekHours / (employees.length || 1))}h</h4>
+            <p>人均周工时</p>
         </div>
     `;
     
@@ -832,20 +1100,19 @@ function showEmployeeStats() {
 
 function showExportOptions() {
     if (!selectedEmployee) {
-        showMessage('请先选择员工', 'warning');
+        showMessage('请先选择一个员工', 'warning');
         return;
     }
-    showExportEmployeeOptions();
-}
-
-function showExportEmployeeOptions() {
-    if (!selectedEmployee) return;
-    
     openModal('exportModal');
 }
 
+function copyEmployeeSchedule() {
+    if (!selectedEmployee) return;
+    copyScheduleAsText();
+}
+
 // ==================== EXPORT FUNCTIONS ====================
-function copyScheduleText() {
+function copyScheduleAsText() {
     if (!selectedEmployee) return;
     
     const employee = employees.find(e => e.id === selectedEmployee);
@@ -855,36 +1122,45 @@ function copyScheduleText() {
     const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
     const weeklyHours = calculateWeeklyHours(selectedEmployee);
     const monthlyHours = calculateMonthlyHours(selectedEmployee);
-    
-    // 生成易读的文本格式
-    let text = `${employee.name} 排班表\n`;
-    text += `职位: ${employee.position}\n`;
-    text += `本周: ${formatDate(startDate)} - ${formatDate(endDate)}\n`;
-    text += `本周工时: ${weeklyHours}小时 | 本月工时: ${monthlyHours}小时\n\n`;
-    
     const days = generateWeekDays(startDate);
+    
+    // 生成格式化的文本
+    let text = `【${employee.name} 排班表】\n`;
+    text += `职位：${employee.position}\n`;
+    text += `日期：${formatDate(startDate)} 至 ${formatDate(endDate)}\n`;
+    text += `本周工时：${weeklyHours}小时 | 本月工时：${monthlyHours}小时\n\n`;
+    text += `📅 本周排班详情：\n`;
+    
     days.forEach(day => {
         const schedule = weekSchedule.find(s => s.date === day.dateString);
         const scheduleText = schedule ? 
-            (schedule.isDayOff ? '休息' : `${schedule.startTime.substring(0, 5)}-${schedule.endTime.substring(0, 5)}`) : 
-            '无排班';
+            (schedule.isDayOff ? '🏖️ 休息' : `🕐 ${schedule.startTime.substring(0, 5)}-${schedule.endTime.substring(0, 5)}`) : 
+            '📭 无排班';
         
-        text += `${day.name} (${day.date}): ${scheduleText}\n`;
+        text += `${day.name}（${day.date}）：${scheduleText}\n`;
     });
     
-    text += `\n生成时间: ${new Date().toLocaleString('zh-CN')}`;
+    text += `\n📍 工作区域：${employee.position === '厨房区' ? '厨房区 👨‍🍳' : '前台/服务区 💁'}\n`;
+    text += `📊 本周工作${weekSchedule.filter(s => !s.isDayOff).length}天，休息${weekSchedule.filter(s => s.isDayOff).length}天\n`;
+    text += `\n⏰ 生成时间：${new Date().toLocaleString('zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })}`;
     
     // 复制到剪贴板
     navigator.clipboard.writeText(text)
         .then(() => {
             showMessage('排班表已复制到剪贴板', 'success');
             closeModal('exportModal');
+            closeModal('employeeModal');
         })
         .catch(err => {
             console.error('复制失败:', err);
-            showMessage('复制失败，请手动复制', 'error');
             
-            // 备用方法
+            // 备用方案
             const textarea = document.createElement('textarea');
             textarea.value = text;
             document.body.appendChild(textarea);
@@ -892,8 +1168,9 @@ function copyScheduleText() {
             document.execCommand('copy');
             document.body.removeChild(textarea);
             
-            showMessage('已手动复制到剪贴板', 'success');
+            showMessage('已复制到剪贴板', 'success');
             closeModal('exportModal');
+            closeModal('employeeModal');
         });
 }
 
@@ -909,24 +1186,28 @@ function printSchedule() {
     const monthlyHours = calculateMonthlyHours(selectedEmployee);
     
     // 创建打印内容
-    const printContent = `
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
         <!DOCTYPE html>
         <html>
         <head>
             <title>${employee.name} 排班表</title>
+            <meta charset="UTF-8">
             <style>
-                body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333; }
-                .header h1 { margin: 0; color: #333; }
-                .info { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-                .info-item { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+                body { font-family: 'Microsoft YaHei', sans-serif; padding: 20px; color: #333; }
+                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #4361ee; }
+                .header h1 { color: #4361ee; margin: 0 0 10px 0; }
+                .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+                .info-card { background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; }
+                .info-card h3 { color: #666; font-size: 14px; margin: 0 0 10px 0; }
+                .info-card p { color: #4361ee; font-size: 28px; font-weight: bold; margin: 0; }
                 .schedule-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                .schedule-table th, .schedule-table td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-                .schedule-table th { background: #f8f9fa; font-weight: bold; }
-                .work { background: #e8f5e9; }
-                .rest { background: #fff3e0; }
-                .summary { background: #e3f2fd; padding: 20px; border-radius: 8px; margin-top: 30px; }
-                .footer { text-align: center; margin-top: 40px; color: #666; font-size: 14px; }
+                .schedule-table th { background: #4361ee; color: white; padding: 12px; text-align: center; }
+                .schedule-table td { padding: 12px; border: 1px solid #ddd; text-align: center; }
+                .schedule-table .work { background: #e8f5e9; }
+                .schedule-table .rest { background: #fff3e0; }
+                .summary { background: #eef2ff; padding: 20px; border-radius: 10px; }
+                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
                 @media print {
                     body { padding: 10px; }
                     .no-print { display: none; }
@@ -936,17 +1217,17 @@ function printSchedule() {
         <body>
             <div class="header">
                 <h1>${employee.name} 排班表</h1>
-                <p>职位: ${employee.position} | 日期: ${formatDate(startDate)} - ${formatDate(endDate)}</p>
+                <p>职位：${employee.position} | 日期：${formatDate(startDate)} 至 ${formatDate(endDate)}</p>
             </div>
             
-            <div class="info">
-                <div class="info-item">
+            <div class="info-grid">
+                <div class="info-card">
                     <h3>本周工时</h3>
-                    <p style="font-size: 24px; font-weight: bold; color: #4361ee;">${weeklyHours} 小时</p>
+                    <p>${weeklyHours} 小时</p>
                 </div>
-                <div class="info-item">
+                <div class="info-card">
                     <h3>本月工时</h3>
-                    <p style="font-size: 24px; font-weight: bold; color: #3a0ca3;">${monthlyHours} 小时</p>
+                    <p>${monthlyHours} 小时</p>
                 </div>
             </div>
             
@@ -955,7 +1236,7 @@ function printSchedule() {
                     <tr>
                         <th>星期</th>
                         <th>日期</th>
-                        <th>排班状态</th>
+                        <th>工作状态</th>
                         <th>工作时间</th>
                         <th>工时</th>
                     </tr>
@@ -971,9 +1252,9 @@ function printSchedule() {
                                 <td>${day.name}</td>
                                 <td>${formatDate(day.dateString)}</td>
                                 <td>${schedule ? (schedule.isDayOff ? '休息' : '上班') : '无排班'}</td>
-                                <td>${schedule ? (schedule.isDayOff ? '休息日' : 
+                                <td>${schedule ? (schedule.isDayOff ? '-' : 
                                     `${schedule.startTime.substring(0, 5)} - ${schedule.endTime.substring(0, 5)}`) : '-'}</td>
-                                <td>${hours} 小时</td>
+                                <td>${hours ? hours + 'h' : '-'}</td>
                             </tr>
                         `;
                     }).join('')}
@@ -982,33 +1263,29 @@ function printSchedule() {
             
             <div class="summary">
                 <h3>本周总结</h3>
-                <p>总工作日: ${weekSchedule.filter(s => !s.isDayOff).length} 天</p>
-                <p>总休息日: ${weekSchedule.filter(s => s.isDayOff).length} 天</p>
-                <p>总工时: ${weeklyHours} 小时</p>
+                <p>工作天数：${weekSchedule.filter(s => !s.isDayOff).length} 天</p>
+                <p>休息天数：${weekSchedule.filter(s => s.isDayOff).length} 天</p>
+                <p>总工时：${weeklyHours} 小时</p>
             </div>
             
             <div class="footer">
-                <p>生成时间: ${new Date().toLocaleString('zh-CN')}</p>
-                <p class="no-print">打印快捷键: Ctrl + P</p>
+                <p>生成时间：${new Date().toLocaleString('zh-CN')}</p>
+                <p class="no-print">打印快捷键：Ctrl + P</p>
             </div>
             
             <script>
                 window.onload = function() {
                     window.print();
-                    setTimeout(() => {
-                        window.close();
-                    }, 500);
+                    setTimeout(() => window.close(), 500);
                 };
             </script>
         </body>
         </html>
-    `;
-    
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(printContent);
+    `);
     printWindow.document.close();
     
     closeModal('exportModal');
+    showMessage('正在生成打印预览...', 'info');
 }
 
 // ==================== UTILITY FUNCTIONS ====================
@@ -1016,7 +1293,7 @@ function getWeekDates(weekOffset = 0) {
     const today = new Date();
     const currentDay = today.getDay();
     
-    // 周一为第一天
+    // 周一为第一天（中国习惯）
     const monday = new Date(today);
     monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     monday.setDate(monday.getDate() + (weekOffset * 7));
@@ -1053,16 +1330,17 @@ function generateWeekDays(startDate) {
 
 function getEmployeeSchedulesForWeek(employeeId, startDate, endDate) {
     return Object.values(schedules).filter(schedule => {
-        if (schedule.employeeId !== employeeId) return false;
-        const scheduleDate = new Date(schedule.date);
-        return scheduleDate >= startDate && scheduleDate <= endDate;
+        return schedule.employeeId === employeeId && 
+               schedule.date >= startDate.toISOString().split('T')[0] && 
+               schedule.date <= endDate.toISOString().split('T')[0];
     });
 }
 
 function getWeekSchedules(startDate, endDate) {
     return Object.values(schedules).filter(schedule => {
-        const scheduleDate = new Date(schedule.date);
-        return scheduleDate >= startDate && scheduleDate <= endDate;
+        const scheduleDate = schedule.date;
+        return scheduleDate >= startDate.toISOString().split('T')[0] && 
+               scheduleDate <= endDate.toISOString().split('T')[0];
     });
 }
 
@@ -1073,7 +1351,7 @@ function getThisWeekSchedule(employeeId) {
     return {
         workDays: weekSchedules.filter(s => !s.isDayOff).length,
         restDays: weekSchedules.filter(s => s.isDayOff).length,
-        totalDays: weekSchedules.length
+        schedules: weekSchedules
     };
 }
 
@@ -1093,9 +1371,9 @@ function calculateMonthlyHours(employeeId) {
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     
     const monthSchedules = Object.values(schedules).filter(schedule => {
-        if (schedule.employeeId !== employeeId) return false;
+        if (schedule.employeeId !== employeeId || schedule.isDayOff) return false;
         const scheduleDate = new Date(schedule.date);
-        return scheduleDate >= startOfMonth && scheduleDate <= endOfMonth && !schedule.isDayOff;
+        return scheduleDate >= startOfMonth && scheduleDate <= endOfMonth;
     });
     
     return monthSchedules.reduce((total, schedule) => {
@@ -1104,11 +1382,22 @@ function calculateMonthlyHours(employeeId) {
 }
 
 function calculateShiftHours(startTime, endTime) {
+    if (!startTime || !endTime || startTime === '00:00' || endTime === '00:00') {
+        return 0;
+    }
+    
     const start = new Date(`2000-01-01T${startTime}`);
     const end = new Date(`2000-01-01T${endTime}`);
-    const diff = (end - start) / (1000 * 60 * 60); // 转换为小时
     
-    return Math.max(0, diff); // 确保不为负数
+    // 处理跨午夜的情况
+    if (end < start) {
+        end.setDate(end.getDate() + 1);
+    }
+    
+    const diffMs = end - start;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    
+    return Math.round(diffHours * 100) / 100; // 保留两位小数
 }
 
 function formatDate(dateString) {
@@ -1117,10 +1406,6 @@ function formatDate(dateString) {
         month: 'long',
         day: 'numeric'
     });
-}
-
-function formatDateRange(startDate, endDate) {
-    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
 }
 
 function getDayName(date) {
@@ -1137,6 +1422,12 @@ function openModal(modalId) {
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
     document.body.style.overflow = 'auto';
+}
+
+function refreshData() {
+    loadEmployees();
+    loadSchedules();
+    showMessage('数据已刷新', 'success');
 }
 
 function showMessage(text, type = 'info') {
@@ -1171,9 +1462,9 @@ const messageStyle = document.createElement('style');
 messageStyle.textContent = `
     .app-message {
         position: fixed;
-        top: 20px;
+        top: 100px;
         left: 50%;
-        transform: translateX(-50%) translateY(-100%);
+        transform: translateX(-50%) translateY(-20px);
         padding: 14px 24px;
         border-radius: 8px;
         display: flex;
@@ -1216,3 +1507,43 @@ messageStyle.textContent = `
     }
 `;
 document.head.appendChild(messageStyle);
+
+// 添加编辑表单样式
+const editFormStyle = document.createElement('style');
+editFormStyle.textContent = `
+    .edit-schedule-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    .employee-display, .date-display {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: var(--light);
+        border-radius: var(--radius-sm);
+    }
+    .employee-avatar-small {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+    }
+    .btn-danger {
+        background: linear-gradient(135deg, var(--danger), #b5179e);
+        color: white;
+        border: none;
+    }
+    .btn-danger:hover {
+        background: linear-gradient(135deg, #e63946, #f72585);
+        transform: translateY(-2px);
+    }
+`;
+document.head.appendChild(editFormStyle);
