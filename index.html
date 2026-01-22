@@ -17,15 +17,13 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1><i class="fas fa-calendar-alt"></i> 排班系统</h1>
+                <h1><i class="fas fa-calendar-alt"></i> 智能排班</h1>
                 <div class="connection-status" id="connectionStatus">
                     <i class="fas fa-wifi"></i>
                     <span>已连接</span>
                 </div>
             </div>
-            <div class="current-date">
-                <span id="currentDate"></span>
-            </div>
+            <div class="current-date" id="currentDate"></div>
         </header>
 
         <!-- Main Navigation -->
@@ -49,15 +47,26 @@
             <!-- EMPLOYEES VIEW -->
             <div class="view active" id="employeesView">
                 <div class="view-header">
-                    <h2><i class="fas fa-users"></i> 员工列表</h2>
-                    <button class="btn-icon" onclick="showAddEmployee()">
-                        <i class="fas fa-user-plus"></i>
-                    </button>
+                    <h2><i class="fas fa-users"></i> 员工管理</h2>
+                    <div class="view-actions">
+                        <button class="btn-icon" onclick="showAddEmployee()" title="添加员工">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                        <button class="btn-icon" onclick="refreshData()" title="刷新数据">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="search-box">
                     <i class="fas fa-search"></i>
                     <input type="text" id="employeeSearch" placeholder="搜索员工..." oninput="searchEmployees()">
+                </div>
+
+                <div class="position-filter">
+                    <button class="filter-btn active" onclick="filterEmployees('all')">全部</button>
+                    <button class="filter-btn" onclick="filterEmployees('前台/服务区')">前台/服务区</button>
+                    <button class="filter-btn" onclick="filterEmployees('厨房区')">厨房区</button>
                 </div>
 
                 <div class="employee-cards" id="employeeCards">
@@ -70,11 +79,11 @@
                 <div class="view-header">
                     <h2><i class="fas fa-calendar-week"></i> 本周排班</h2>
                     <div class="week-nav">
-                        <button class="btn-icon" onclick="changeWeek(-1)">
+                        <button class="btn-icon" onclick="changeWeek(-1)" title="上周">
                             <i class="fas fa-chevron-left"></i>
                         </button>
                         <span id="weekRange">本周</span>
-                        <button class="btn-icon" onclick="changeWeek(1)">
+                        <button class="btn-icon" onclick="changeWeek(1)" title="下周">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
@@ -106,23 +115,23 @@
 
                     <div class="time-group">
                         <div class="form-group">
-                            <label>开始时间</label>
+                            <label><i class="fas fa-play-circle"></i> 开始时间</label>
                             <input type="time" id="scheduleStart" class="input-field" value="08:00">
                         </div>
                         <div class="form-group">
-                            <label>结束时间</label>
+                            <label><i class="fas fa-stop-circle"></i> 结束时间</label>
                             <input type="time" id="scheduleEnd" class="input-field" value="17:00">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>类型</label>
+                        <label><i class="fas fa-tag"></i> 类型</label>
                         <div class="type-selector">
-                            <button class="type-btn active" data-type="work" onclick="selectType('work')">
+                            <button class="type-btn active" data-type="work" onclick="selectScheduleType('work')">
                                 <i class="fas fa-briefcase"></i>
                                 <span>上班</span>
                             </button>
-                            <button class="type-btn" data-type="rest" onclick="selectType('rest')">
+                            <button class="type-btn" data-type="rest" onclick="selectScheduleType('rest')">
                                 <i class="fas fa-umbrella-beach"></i>
                                 <span>休息</span>
                             </button>
@@ -133,7 +142,7 @@
                         <button class="btn-primary" onclick="addSchedule()">
                             <i class="fas fa-check"></i> 添加排班
                         </button>
-                        <button class="btn-secondary" onclick="quickWeekSchedule()">
+                        <button class="btn-secondary" onclick="showQuickWeekModal()">
                             <i class="fas fa-bolt"></i> 快速整周
                         </button>
                     </div>
@@ -147,12 +156,12 @@
                 <i class="fas fa-calendar-day"></i>
                 <span>今日</span>
             </button>
-            <button class="quick-action" onclick="showEmployeeStats()">
+            <button class="quick-action" onclick="showStats()">
                 <i class="fas fa-chart-bar"></i>
                 <span>统计</span>
             </button>
             <button class="quick-action primary" onclick="showExportOptions()">
-                <i class="fas fa-share"></i>
+                <i class="fas fa-share-alt"></i>
                 <span>分享</span>
             </button>
         </div>
@@ -169,32 +178,40 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="employee-info">
-                    <div class="info-row">
-                        <span class="label">职位</span>
-                        <span class="value" id="modalEmployeePosition"></span>
+                <div class="employee-detail-info">
+                    <div class="employee-basic">
+                        <div class="info-row">
+                            <span class="label">职位</span>
+                            <span class="value" id="modalEmployeePosition"></span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">本周工时</span>
+                            <span class="value" id="modalWeekHours">0 小时</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">本月工时</span>
+                            <span class="value" id="modalMonthHours">0 小时</span>
+                        </div>
                     </div>
-                    <div class="info-row">
-                        <span class="label">本周工时</span>
-                        <span class="value" id="modalWeekHours"></span>
-                    </div>
-                    <div class="info-row">
-                        <span class="label">本月工时</span>
-                        <span class="value" id="modalMonthHours"></span>
-                    </div>
-                </div>
 
-                <div class="weekly-schedule-preview" id="employeeWeekSchedule">
-                    <!-- 员工本周排班 -->
-                </div>
+                    <div class="week-summary">
+                        <h4><i class="fas fa-calendar-week"></i> 本周排班</h4>
+                        <div class="week-days" id="employeeWeekDays">
+                            <!-- 周排班日视图 -->
+                        </div>
+                    </div>
 
-                <div class="modal-actions">
-                    <button class="btn-action" onclick="editEmployeeSchedule()">
-                        <i class="fas fa-edit"></i> 编辑排班
-                    </button>
-                    <button class="btn-action" onclick="showExportEmployeeOptions()">
-                        <i class="fas fa-share"></i> 分享排班
-                    </button>
+                    <div class="modal-actions">
+                        <button class="btn-action" onclick="editEmployeeSchedule()">
+                            <i class="fas fa-edit"></i> 编辑排班
+                        </button>
+                        <button class="btn-action" onclick="copyEmployeeSchedule()">
+                            <i class="fas fa-copy"></i> 复制排班
+                        </button>
+                        <button class="btn-action btn-danger" onclick="deleteCurrentEmployee()">
+                            <i class="fas fa-trash"></i> 删除员工
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -211,24 +228,71 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <input type="text" id="newEmployeeName" class="input-field" placeholder="员工姓名">
+                    <input type="text" id="newEmployeeName" class="input-field" placeholder="请输入员工姓名" autofocus>
                 </div>
                 <div class="form-group">
-                    <label>职位</label>
+                    <label><i class="fas fa-briefcase"></i> 职位</label>
                     <div class="position-select">
                         <button class="position-option active" data-position="前台/服务区" onclick="selectPosition(this)">
                             <i class="fas fa-door-open"></i>
-                            前台/服务区
+                            <span>前台/服务区</span>
                         </button>
                         <button class="position-option" data-position="厨房区" onclick="selectPosition(this)">
                             <i class="fas fa-utensils"></i>
-                            厨房区
+                            <span>厨房区</span>
                         </button>
                     </div>
                 </div>
                 <button class="btn-primary full-width" onclick="addEmployee()">
-                    <i class="fas fa-plus"></i> 添加
+                    <i class="fas fa-plus"></i> 添加员工
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Week Schedule Modal -->
+    <div class="modal" id="quickWeekModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bolt"></i> 快速整周排班</h3>
+                <button class="modal-close" onclick="closeModal('quickWeekModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> 选择员工</label>
+                    <select id="quickWeekEmployee" class="select-input">
+                        <option value="">选择员工</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-clock"></i> 工作时间</label>
+                    <div class="time-group">
+                        <input type="time" id="quickWeekStart" class="input-field" value="08:00">
+                        <span class="time-separator">至</span>
+                        <input type="time" id="quickWeekEnd" class="input-field" value="17:00">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-check"></i> 工作日</label>
+                    <div class="weekdays-selector" id="weekdaysSelector">
+                        <!-- 工作日选择器 -->
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> 开始日期</label>
+                    <input type="date" id="quickWeekDate" class="input-field">
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="applyQuickWeekSchedule()">
+                        <i class="fas fa-check"></i> 应用排班
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -237,27 +301,32 @@
     <div class="modal" id="exportModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-share"></i> 分享选项</h3>
+                <h3><i class="fas fa-share-alt"></i> 分享选项</h3>
                 <button class="modal-close" onclick="closeModal('exportModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="export-options">
-                    <button class="export-option" onclick="copyScheduleText()">
-                        <i class="fas fa-copy"></i>
-                        <div class="option-info">
-                            <strong>复制文本</strong>
-                            <small>复制为文本格式，可直接粘贴到微信</small>
+                    <div class="export-option" onclick="copyScheduleAsText()">
+                        <div class="export-icon">
+                            <i class="fas fa-copy"></i>
                         </div>
-                    </button>
-                    <button class="export-option" onclick="printSchedule()">
-                        <i class="fas fa-print"></i>
-                        <div class="option-info">
-                            <strong>打印排班</strong>
-                            <small>打印本周详细排班表</small>
+                        <div class="export-info">
+                            <strong>复制文本格式</strong>
+                            <small>适合粘贴到微信、短信</small>
                         </div>
-                    </button>
+                    </div>
+                    
+                    <div class="export-option" onclick="printSchedule()">
+                        <div class="export-icon">
+                            <i class="fas fa-print"></i>
+                        </div>
+                        <div class="export-info">
+                            <strong>打印排班表</strong>
+                            <small>生成PDF或直接打印</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -273,8 +342,8 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="today-schedule" id="todaySchedule">
-                    <!-- 今日排班 -->
+                <div class="today-list" id="todayList">
+                    <!-- 今日排班列表 -->
                 </div>
             </div>
         </div>
@@ -290,7 +359,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="stats-grid" id="statsContent">
+                <div class="stats-grid" id="statsGrid">
                     <!-- 统计信息 -->
                 </div>
             </div>
@@ -314,7 +383,7 @@
         </div>
     </div>
 
-    <!-- Firebase Config -->
+    <!-- Firebase Configuration -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyB6C3s4EAPEx0GBLnBXAz4aYJfoCBEyofc",
@@ -329,7 +398,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
-        // 连接状态
+        // 检查连接状态
         database.ref('.info/connected').on('value', (snap) => {
             const status = document.getElementById('connectionStatus');
             if (snap.val() === true) {
