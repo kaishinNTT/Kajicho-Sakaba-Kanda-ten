@@ -1,74 +1,278 @@
-/* Reset style */
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
-  font-family: sans-serif;
-  color: #333;
-  font-size: 16px;
-  line-height: 1.5;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
 }
 
-/* Header */
-header {
-  background-color: #444;
-  color: #fff;
-  text-align: center;
-  padding: 10px;
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 h1 {
-  margin: 0;
-  font-size: 24px;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 2.5rem;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #eee;
 }
 
-/* Main content */
-main {
-  padding: 10px;
-}
-
-section {
-  margin-bottom: 20px;
-}
-
-h2 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 18px;
-}
-
-p {
-  margin-bottom: 10px;
-}
-
-/* Footer */
-footer {
-  background-color: #444;
-  color: #fff;
-  text-align: center;
-  padding: 10px;
-}
-
-/* Responsive layout */
-@media only screen and (max-width: 768px) {
-  /* Thay đổi layout cho màn hình nhỏ hơn */
-
-  header {
-    font-size: 18px;
-  }
-
-  h1 {
-    font-size: 20px;
-  }
-
-  h2 {
+.status {
+    background: #4CAF50;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 50px;
+    display: inline-block;
+    margin-bottom: 25px;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
     font-size: 16px;
-  }
+}
 
-  p {
+.section {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 25px;
+    border: 1px solid #eaeaea;
+}
+
+.section h2 {
+    color: #444;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+input, select, button {
+    padding: 12px 18px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+button {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 14px rgba(102, 126, 234, 0.2);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.employee-item {
+    background: #e3f2fd;
+    padding: 10px 18px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    border: 1px solid #bbdefb;
+}
+
+.delete-employee-btn {
+    background: #f44336;
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.delete-employee-btn:hover {
+    background: #d32f2f;
+    transform: scale(1.1);
+}
+
+.schedule-container {
+    margin-top: 20px;
+}
+
+.date-header {
+    background: #e8f5e9;
+    padding: 12px 20px;
+    border-radius: 10px;
+    margin: 15px 0;
+    border-left: 5px solid #4CAF50;
+}
+
+.date-header h3 {
+    color: #2e7d32;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.schedule-item {
+    background: white;
+    padding: 18px;
+    margin: 12px 0;
+    border-radius: 12px;
+    border-left: 5px solid #2196F3;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s;
+}
+
+.schedule-item:hover {
+    transform: translateX(8px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.schedule-info {
+    flex: 1;
+}
+
+.schedule-info strong {
+    color: #2d3748;
+    font-size: 18px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.schedule-time {
+    color: #666;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.delete-btn {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
     font-size: 14px;
-  }
+}
+
+.delete-btn:hover {
+    background: linear-gradient(45deg, #ff5252, #d32f2f);
+    transform: scale(1.05);
+}
+
+.info {
+    background: #f0f7ff;
+    padding: 22px;
+    border-radius: 12px;
+    margin-top: 30px;
+    border: 1px solid #bbdefb;
+}
+
+.info h3 {
+    color: #1976d2;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.info ul {
+    padding-left: 22px;
+    color: #555;
+}
+
+.info li {
+    margin: 10px 0;
+    line-height: 1.6;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+        margin: 10px;
+        border-radius: 15px;
+    }
+    
+    .form-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    input, select, button {
+        width: 100%;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .schedule-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .delete-btn {
+        align-self: flex-end;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.schedule-item, .employee-item {
+    animation: fadeIn 0.3s ease-out;
 }
