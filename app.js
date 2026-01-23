@@ -5,36 +5,12 @@ let currentWeek = 0;
 let selectedEmployee = null;
 let selectedPosition = '前台/服务区';
 let currentPositionFilter = 'all';
-let database;
+// database được khai báo trong HTML, sử dụng window.database
 let currentLanguage = 'ja'; // Default: Japanese
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("🚀 Kajicho Kanda Schedule System Starting");
-    
-    try {
-        // Initialize Firebase
-        if (typeof firebase !== 'undefined') {
-            database = firebase.database();
-            
-            // Check connection status
-            database.ref('.info/connected').on('value', (snap) => {
-                const status = document.getElementById('connectionStatus');
-                if (snap.val() === true) {
-                    status.innerHTML = '<i class="fas fa-wifi"></i><span data-lang="ja">接続済み</span><span data-lang="zh" style="display:none">已连接</span>';
-                    status.className = 'connection-status connected';
-                } else {
-                    status.innerHTML = '<i class="fas fa-wifi-slash"></i><span data-lang="ja">接続切れ</span><span data-lang="zh" style="display:none">未连接</span>';
-                    status.className = 'connection-status disconnected';
-                }
-            });
-        } else {
-            console.error("Firebase not loaded");
-            showMessage("Database connection error", "error");
-        }
-    } catch (error) {
-        console.error("Firebase initialization error:", error);
-    }
+    console.log("🚀 鍛治町酒場 神田店 勤務表システム起動");
     
     // Load language
     const savedLanguage = localStorage.getItem('appLanguage');
@@ -58,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add toast styles
     addToastStyles();
     
-    console.log("✅ App initialized successfully");
+    console.log("✅ アプリ初期化完了");
 });
 
 function initApp() {
@@ -131,6 +107,7 @@ function updateLanguage() {
     renderWeeklySchedule();
 }
 
+// Định nghĩa hàm updateCurrentDate (bị thiếu)
 function updateCurrentDate() {
     const now = new Date();
     const options = { 
@@ -419,12 +396,12 @@ function switchView(viewName) {
 
 // ==================== EMPLOYEE MANAGEMENT ====================
 function loadEmployees() {
-    if (!database) {
+    if (!window.database) {
         console.error("Database not initialized");
         return;
     }
     
-    const employeesRef = database.ref('employees');
+    const employeesRef = window.database.ref('employees');
     
     employeesRef.on('value', (snapshot) => {
         employees = [];
@@ -711,12 +688,12 @@ function addEmployee() {
         return;
     }
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
     
-    database.ref('employees').push({
+    window.database.ref('employees').push({
         name: name,
         position: selectedPosition,
         createdAt: Date.now()
@@ -745,22 +722,22 @@ function deleteCurrentEmployee() {
         return;
     }
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
     
     // Delete employee
-    database.ref(`employees/${selectedEmployee}`).remove()
+    window.database.ref(`employees/${selectedEmployee}`).remove()
     .then(() => {
         // Delete all schedules for this employee
-        const schedulesRef = database.ref('schedules');
+        const schedulesRef = window.database.ref('schedules');
         schedulesRef.once('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 Object.keys(data).forEach(scheduleId => {
                     if (data[scheduleId].employeeId === selectedEmployee) {
-                        database.ref(`schedules/${scheduleId}`).remove();
+                        window.database.ref(`schedules/${scheduleId}`).remove();
                     }
                 });
             }
@@ -834,12 +811,12 @@ function updateRestDaysEmployeeSelect() {
 
 // ==================== SCHEDULE MANAGEMENT ====================
 function loadSchedules() {
-    if (!database) {
+    if (!window.database) {
         console.error("Database not initialized");
         return;
     }
     
-    const schedulesRef = database.ref('schedules');
+    const schedulesRef = window.database.ref('schedules');
     
     schedulesRef.on('value', (snapshot) => {
         schedules = snapshot.val() || {};
@@ -949,7 +926,7 @@ function addSchedule() {
         scheduleData.notes = currentLanguage === 'ja' ? '休み' : '休息';
     }
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
@@ -957,7 +934,7 @@ function addSchedule() {
     if (existingSchedule) {
         // Update existing schedule
         const scheduleId = existingSchedule.id;
-        database.ref(`schedules/${scheduleId}`).update(scheduleData)
+        window.database.ref(`schedules/${scheduleId}`).update(scheduleData)
         .then(() => {
             resetScheduleForm();
             showMessage(currentLanguage === 'ja' ? 'スケジュールを更新しました' : '排班更新成功', 'success');
@@ -971,7 +948,7 @@ function addSchedule() {
         // Add new schedule
         scheduleData.createdAt = Date.now();
         
-        database.ref('schedules').push().set(scheduleData)
+        window.database.ref('schedules').push().set(scheduleData)
         .then(() => {
             resetScheduleForm();
             showMessage(currentLanguage === 'ja' ? 'スケジュールを追加しました' : '排班添加成功', 'success');
@@ -1209,7 +1186,7 @@ function applyQuickWeekSchedule() {
         return;
     }
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
@@ -1253,13 +1230,13 @@ function applyQuickWeekSchedule() {
         if (existingSchedule) {
             // Update existing schedule
             promises.push(
-                database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
+                window.database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
             );
         } else {
             // Add new schedule
             scheduleData.createdAt = Date.now();
             promises.push(
-                database.ref('schedules').push().set(scheduleData)
+                window.database.ref('schedules').push().set(scheduleData)
             );
         }
     });
@@ -1373,7 +1350,7 @@ function applyRestDays() {
         return;
     }
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
@@ -1399,13 +1376,13 @@ function applyRestDays() {
         if (existingSchedule) {
             // Update existing schedule to rest
             promises.push(
-                database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
+                window.database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
             );
         } else {
             // Add new schedule
             scheduleData.createdAt = Date.now();
             promises.push(
-                database.ref('schedules').push().set(scheduleData)
+                window.database.ref('schedules').push().set(scheduleData)
             );
         }
     });
@@ -1711,7 +1688,7 @@ function saveDaySchedule(employeeId, date) {
         scheduleData.notes = currentLanguage === 'ja' ? '休み' : '休息';
     }
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
@@ -1720,7 +1697,7 @@ function saveDaySchedule(employeeId, date) {
     
     if (existingSchedule) {
         // Update existing schedule
-        database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
+        window.database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
         .then(() => {
             closeModal('editModal');
             showMessage(currentLanguage === 'ja' ? 'スケジュールを更新しました' : '排班更新成功', 'success');
@@ -1734,7 +1711,7 @@ function saveDaySchedule(employeeId, date) {
         // Add new schedule
         scheduleData.createdAt = Date.now();
         
-        database.ref('schedules').push().set(scheduleData)
+        window.database.ref('schedules').push().set(scheduleData)
         .then(() => {
             closeModal('editModal');
             showMessage(currentLanguage === 'ja' ? 'スケジュールを追加しました' : '排班添加成功', 'success');
@@ -1757,12 +1734,12 @@ function deleteDaySchedule(employeeId, date) {
     const schedule = findScheduleByEmployeeAndDate(employeeId, date);
     if (!schedule) return;
     
-    if (!database) {
+    if (!window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
     
-    database.ref(`schedules/${schedule.id}`).remove()
+    window.database.ref(`schedules/${schedule.id}`).remove()
     .then(() => {
         closeModal('editModal');
         showMessage(currentLanguage === 'ja' ? 'スケジュールを削除しました' : '排班删除成功', 'success');
@@ -1772,6 +1749,506 @@ function deleteDaySchedule(employeeId, date) {
     .catch(error => {
         showMessage(currentLanguage === 'ja' ? '削除失敗: ' : '删除失败: ' + error.message, 'error');
     });
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+function getWeekDates(weekOffset = 0) {
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    // Monday as first day
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    monday.setDate(monday.getDate() + (weekOffset * 7));
+    
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    
+    return {
+        startDate: monday,
+        endDate: sunday,
+        startString: monday.toISOString().split('T')[0],
+        endString: sunday.toISOString().split('T')[0]
+    };
+}
+
+function generateWeekDays(startDate) {
+    const days = [];
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        
+        days.push({
+            name: dayNames[i],
+            date: `${date.getMonth() + 1}/${date.getDate()}`,
+            dateString: date.toISOString().split('T')[0],
+            dayIndex: i
+        });
+    }
+    
+    return days;
+}
+
+function getWeekSchedules(startDate, endDate) {
+    const weekSchedules = [];
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+    
+    if (!schedules || typeof schedules !== 'object') return weekSchedules;
+    
+    Object.values(schedules).forEach(schedule => {
+        if (schedule && schedule.date >= startStr && schedule.date <= endStr) {
+            weekSchedules.push(schedule);
+        }
+    });
+    
+    return weekSchedules;
+}
+
+function getEmployeeSchedulesForWeek(employeeId, startDate, endDate) {
+    const employeeSchedules = [];
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+    
+    if (!schedules || typeof schedules !== 'object') return employeeSchedules;
+    
+    Object.values(schedules).forEach(schedule => {
+        if (schedule && schedule.employeeId === employeeId && 
+            schedule.date >= startStr && 
+            schedule.date <= endStr) {
+            employeeSchedules.push(schedule);
+        }
+    });
+    
+    return employeeSchedules;
+}
+
+function calculateWeeklyHours(employeeId) {
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedules = getEmployeeSchedulesForWeek(employeeId, startDate, endDate);
+    
+    let totalHours = 0;
+    weekSchedules.forEach(schedule => {
+        if (!schedule.isDayOff && schedule.startTime && schedule.endTime) {
+            totalHours += calculateShiftHours(schedule.startTime, schedule.endTime);
+        }
+    });
+    
+    return Math.round(totalHours * 10) / 10; // Round to 1 decimal place
+}
+
+function calculateMonthlyHours(employeeId) {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    const firstStr = firstDay.toISOString().split('T')[0];
+    const lastStr = lastDay.toISOString().split('T')[0];
+    
+    let totalHours = 0;
+    
+    if (!schedules || typeof schedules !== 'object') return totalHours;
+    
+    Object.values(schedules).forEach(schedule => {
+        if (schedule && schedule.employeeId === employeeId && 
+            schedule.date >= firstStr && 
+            schedule.date <= lastStr &&
+            !schedule.isDayOff) {
+            totalHours += calculateShiftHours(schedule.startTime, schedule.endTime);
+        }
+    });
+    
+    return Math.round(totalHours * 10) / 10;
+}
+
+function getThisWeekSchedule(employeeId) {
+    const { startDate } = getWeekDates(0);
+    const weekSchedule = getEmployeeSchedulesForWeek(employeeId, startDate, 
+        new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000));
+    
+    const workDays = weekSchedule.filter(s => !s.isDayOff).length;
+    const restDays = weekSchedule.filter(s => s.isDayOff).length;
+    
+    return {
+        workDays: workDays,
+        restDays: restDays,
+        totalShifts: weekSchedule.length
+    };
+}
+
+function formatDate(date) {
+    if (typeof date === 'string') {
+        date = new Date(date);
+    }
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day}`;
+}
+
+function getDayName(date) {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return days[date.getDay()];
+}
+
+function refreshData() {
+    if (!window.database) {
+        showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
+        return;
+    }
+    
+    // Update Firebase connection
+    window.database.ref('.info/connected').once('value').then(snap => {
+        if (snap.val() === true) {
+            showMessage(currentLanguage === 'ja' ? 'データ同期完了' : '数据同步完成', 'success');
+            loadEmployees();
+            loadSchedules();
+        } else {
+            showMessage(currentLanguage === 'ja' ? 'サーバーに接続できません' : '无法连接服务器', 'error');
+        }
+    }).catch(error => {
+        showMessage(currentLanguage === 'ja' ? '更新エラー: ' : '刷新错误: ' + error.message, 'error');
+    });
+}
+
+// ==================== EXPORT FUNCTIONS ====================
+function copyEmployeeSchedule() {
+    if (!selectedEmployee) return;
+    copyScheduleAsText();
+}
+
+function printEmployeeSchedule() {
+    if (!selectedEmployee) return;
+    
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+    
+    // Directly call print function
+    printSchedule();
+    // Close employee detail modal
+    closeModal('employeeModal');
+}
+
+function copyScheduleAsText() {
+    if (!selectedEmployee) return;
+    
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+    
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
+    const weeklyHours = calculateWeeklyHours(selectedEmployee);
+    const monthlyHours = calculateMonthlyHours(selectedEmployee);
+    const days = generateWeekDays(startDate);
+    
+    // Generate formatted text
+    let text = `【${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}】\n`;
+    text += `${currentLanguage === 'ja' ? '職種:' : '职位:'} ${currentLanguage === 'ja' ? 
+        (employee.position === '厨房区' ? '厨房' : 'フロント') : 
+        (employee.position === '厨房区' ? '厨房' : '前台')}\n`;
+    text += `${currentLanguage === 'ja' ? '日付:' : '日期:'} ${formatDate(startDate)} ${currentLanguage === 'ja' ? '〜' : '至'} ${formatDate(endDate)}\n`;
+    text += `${currentLanguage === 'ja' ? '今週:' : '本周:'} ${weeklyHours}${currentLanguage === 'ja' ? '時間' : '小时'} | ${currentLanguage === 'ja' ? '今月:' : '本月:'} ${monthlyHours}${currentLanguage === 'ja' ? '時間' : '小时'}\n\n`;
+    text += `📅 ${currentLanguage === 'ja' ? '今週のスケジュール:' : '本周排班:'}\n`;
+    
+    // Day names for display
+    const dayNames = currentLanguage === 'ja' 
+        ? ['月', '火', '水', '木', '金', '土', '日']
+        : ['一', '二', '三', '四', '五', '六', '日'];
+    
+    days.forEach((day, index) => {
+        const schedule = weekSchedule.find(s => s.date === day.dateString);
+        const scheduleText = schedule ? 
+            (schedule.isDayOff ? '🏖️ ' + (currentLanguage === 'ja' ? '休み' : '休息') : `🕐 ${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}-${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}`) : 
+            '📭 ' + (currentLanguage === 'ja' ? 'なし' : '无');
+        
+        text += `${dayNames[index]} (${day.date}): ${scheduleText}\n`;
+    });
+    
+    text += `\n📍 ${currentLanguage === 'ja' ? '勤務エリア:' : '工作区域:'} ${employee.position === '厨房区' ? 
+        (currentLanguage === 'ja' ? '厨房 👨‍🍳' : '厨房 👨‍🍳') : 
+        (currentLanguage === 'ja' ? 'フロント/サービス 💁' : '前台/服务 💁')}\n`;
+    text += `📊 ${currentLanguage === 'ja' ? '今週:' : '本周:'} ${weekSchedule.filter(s => !s.isDayOff).length}${currentLanguage === 'ja' ? '勤務日' : '工作日'}, ${weekSchedule.filter(s => s.isDayOff).length}${currentLanguage === 'ja' ? '休日' : '休息日'}\n`;
+    text += `\n⏰ ${currentLanguage === 'ja' ? '生成日時:' : '生成时间:'} ${new Date().toLocaleString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showMessage(currentLanguage === 'ja' ? 'クリップボードにコピーしました' : '已复制到剪贴板', 'success');
+            closeModal('employeeModal');
+        })
+        .catch(err => {
+            console.error('Copy failed:', err);
+            
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showMessage(currentLanguage === 'ja' ? 'クリップボードにコピーしました' : '已复制到剪贴板', 'success');
+            } catch (err) {
+                showMessage(currentLanguage === 'ja' ? 'コピーに失敗しました' : '复制失败', 'error');
+            }
+            document.body.removeChild(textarea);
+            
+            closeModal('employeeModal');
+        });
+}
+
+function printSchedule() {
+    if (!selectedEmployee) return;
+    
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+    
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
+    const weeklyHours = calculateWeeklyHours(selectedEmployee);
+    const monthlyHours = calculateMonthlyHours(selectedEmployee);
+    
+    // Generate table row content
+    const tableRows = generateWeekDays(startDate).map(day => {
+        const schedule = weekSchedule.find(s => s.date === day.dateString);
+        const hours = schedule && !schedule.isDayOff ? 
+            calculateShiftHours(schedule.startTime, schedule.endTime) : 0;
+        
+        let scheduleTime = '-';
+        if (schedule && !schedule.isDayOff) {
+            scheduleTime = (schedule.startTime ? schedule.startTime.substring(0, 5) : '') + ' - ' + (schedule.endTime ? schedule.endTime.substring(0, 5) : '');
+        }
+        
+        const statusClass = schedule ? (schedule.isDayOff ? 'rest' : 'work') : '';
+        const statusText = schedule ? (schedule.isDayOff ? 
+            (currentLanguage === 'ja' ? '休み' : '休息') : 
+            (currentLanguage === 'ja' ? '勤務' : '工作')) : 
+            (currentLanguage === 'ja' ? 'なし' : '无');
+        
+        return `
+            <tr class="${statusClass}">
+                <td>${day.name}</td>
+                <td>${formatDate(day.dateString)}</td>
+                <td>${statusText}</td>
+                <td>${scheduleTime}</td>
+                <td>${hours ? hours + 'h' : '-'}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Create print content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>鍛治町酒場 神田店 - ${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: 'Microsoft YaHei', sans-serif; padding: 20px; color: #1e293b; background: white; }
+                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #2563eb; }
+                .header h1 { color: #2563eb; margin: 0 0 10px 0; font-size: 28px; font-weight: 800; }
+                .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+                .info-card { background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
+                .info-card h3 { color: #64748b; font-size: 14px; margin: 0 0 12px 0; font-weight: 600; text-transform: uppercase; }
+                .info-card p { color: #2563eb; font-size: 32px; font-weight: 800; margin: 0; }
+                .schedule-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+                .schedule-table th { background: #2563eb; color: white; padding: 16px; text-align: center; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); }
+                .schedule-table th:last-child { border-right: none; }
+                .schedule-table td { padding: 16px; border: 1px solid #e2e8f0; text-align: center; }
+                .schedule-table .work { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+                .schedule-table .rest { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+                .summary { background: #dbeafe; padding: 24px; border-radius: 12px; color: #1e40af; border: 1px solid #bfdbfe; }
+                .summary h3 { font-size: 18px; margin: 0 0 16px 0; font-weight: 700; }
+                .summary p { margin: 8px 0; font-weight: 500; }
+                .footer { text-align: center; margin-top: 30px; color: #64748b; font-size: 14px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                @media print {
+                    body { padding: 10px; }
+                    .no-print { display: none; }
+                    @page { margin: 0.5cm; }
+                    .header h1 { font-size: 24px; }
+                    .info-card p { font-size: 28px; }
+                }
+                @media (max-width: 768px) {
+                    .info-grid { grid-template-columns: 1fr; }
+                    .schedule-table th, .schedule-table td { padding: 12px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>鍛治町酒場 神田店 - ${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}</h1>
+                <p>${currentLanguage === 'ja' ? '職種:' : '职位:'} ${currentLanguage === 'ja' ? 
+                    (employee.position === '厨房区' ? '厨房' : 'フロント') : 
+                    (employee.position === '厨房区' ? '厨房' : '前台')} | ${currentLanguage === 'ja' ? '日付:' : '日期:'} ${formatDate(startDate)} ${currentLanguage === 'ja' ? '〜' : '至'} ${formatDate(endDate)}</p>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>${currentLanguage === 'ja' ? '今週の時間' : '本周工时'}</h3>
+                    <p>${weeklyHours} ${currentLanguage === 'ja' ? '時間' : '小时'}</p>
+                </div>
+                <div class="info-card">
+                    <h3>${currentLanguage === 'ja' ? '今月の時間' : '本月工时'}</h3>
+                    <p>${monthlyHours} ${currentLanguage === 'ja' ? '時間' : '小时'}</p>
+                </div>
+            </div>
+            
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>${currentLanguage === 'ja' ? '曜日' : '星期'}</th>
+                        <th>${currentLanguage === 'ja' ? '日付' : '日期'}</th>
+                        <th>${currentLanguage === 'ja' ? '状態' : '状态'}</th>
+                        <th>${currentLanguage === 'ja' ? '勤務時間' : '工作时间'}</th>
+                        <th>${currentLanguage === 'ja' ? '時間' : '小时'}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            
+            <div class="summary">
+                <h3>${currentLanguage === 'ja' ? '今週の概要' : '本周概要'}</h3>
+                <p>${currentLanguage === 'ja' ? '勤務日:' : '工作日:'} ${weekSchedule.filter(s => !s.isDayOff).length} ${currentLanguage === 'ja' ? '日' : '天'}</p>
+                <p>${currentLanguage === 'ja' ? '休日:' : '休息日:'} ${weekSchedule.filter(s => s.isDayOff).length} ${currentLanguage === 'ja' ? '日' : '天'}</p>
+                <p>${currentLanguage === 'ja' ? '総時間:' : '总工时:'} ${weeklyHours} ${currentLanguage === 'ja' ? '時間' : '小时'}</p>
+            </div>
+            
+            <div class="footer">
+                <p>${currentLanguage === 'ja' ? '生成日時:' : '生成时间:'} ${new Date().toLocaleString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN')}</p>
+                <p class="no-print">${currentLanguage === 'ja' ? 'ヒント: Ctrl + P で印刷' : '提示: 按Ctrl+P打印'}</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Directly open print dialog
+    try {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            // Delay to ensure content loads
+            setTimeout(() => {
+                printWindow.print();
+                // Automatically close window after printing
+                setTimeout(() => {
+                    printWindow.close();
+                }, 500);
+            }, 500);
+            
+            showMessage(currentLanguage === 'ja' ? '印刷プレビューを開いています...' : '正在打开打印预览...', 'info');
+        }
+    } catch (error) {
+        console.error("Print error:", error);
+        showMessage(currentLanguage === 'ja' ? "印刷エラー: " : "打印错误: " + error.message, "error");
+    }
+}
+
+// ==================== SETUP EVENT LISTENERS ====================
+function setupEventListeners() {
+    // Language switch button
+    document.getElementById('languageSwitch').addEventListener('click', function() {
+        currentLanguage = currentLanguage === 'ja' ? 'zh' : 'ja';
+        updateLanguage();
+        localStorage.setItem('appLanguage', currentLanguage);
+    });
+    
+    // Close modal when clicking background
+    document.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeModal(event.target.id);
+        }
+    });
+    
+    // Prevent page scroll on iOS keyboard dismiss
+    document.addEventListener('focusout', function() {
+        setTimeout(() => {
+            window.scrollTo(0, 0);
+        }, 100);
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey || event.metaKey) {
+            switch(event.key.toLowerCase()) {
+                case 'e':
+                    if (selectedEmployee) {
+                        editEmployeeSchedule();
+                        event.preventDefault();
+                    }
+                    break;
+                case 'c':
+                    if (selectedEmployee) {
+                        copyEmployeeSchedule();
+                        event.preventDefault();
+                    }
+                    break;
+                case 'p':
+                    if (selectedEmployee) {
+                        printEmployeeSchedule();
+                        event.preventDefault();
+                    }
+                    break;
+                case 's':
+                    refreshData();
+                    event.preventDefault();
+                    break;
+            }
+        }
+        
+        // Escape key to close modal
+        if (event.key === 'Escape') {
+            const openModal = document.querySelector('.modal[style*="display: flex"]');
+            if (openModal) {
+                closeModal(openModal.id);
+            }
+        }
+    });
+    
+    // Fix for iOS date input
+    const dateInputs = document.querySelectorAll('input[type="date"]');
+    dateInputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.type = 'text';
+            setTimeout(() => {
+                this.type = 'date';
+            }, 100);
+        });
+    });
+    
+    // Prevent zoom on iOS when focusing input
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            document.body.style.zoom = '100%';
+        });
+    });
+    
+    // Save state when leaving page
+    window.addEventListener('beforeunload', function(e) {
+        const activeView = document.querySelector('.view.active');
+        if (activeView) {
+            const lastView = activeView.id.replace('View', '');
+            localStorage.setItem('lastView', lastView);
+        }
+        localStorage.setItem('appLanguage', currentLanguage);
+    });
+    
+    // Restore saved view
+    const savedView = localStorage.getItem('lastView');
+    if (savedView) {
+        setTimeout(() => switchView(savedView), 100);
+    }
 }
 
 // ==================== PRINT ALL SCHEDULE ====================
@@ -2129,506 +2606,6 @@ function showStats() {
     `;
     
     openModal('statsModal');
-}
-
-// ==================== UTILITY FUNCTIONS ====================
-function getWeekDates(weekOffset = 0) {
-    const today = new Date();
-    const currentDay = today.getDay();
-    
-    // Monday as first day
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-    monday.setDate(monday.getDate() + (weekOffset * 7));
-    
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    
-    return {
-        startDate: monday,
-        endDate: sunday,
-        startString: monday.toISOString().split('T')[0],
-        endString: sunday.toISOString().split('T')[0]
-    };
-}
-
-function generateWeekDays(startDate) {
-    const days = [];
-    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        
-        days.push({
-            name: dayNames[i],
-            date: `${date.getMonth() + 1}/${date.getDate()}`,
-            dateString: date.toISOString().split('T')[0],
-            dayIndex: i
-        });
-    }
-    
-    return days;
-}
-
-function getWeekSchedules(startDate, endDate) {
-    const weekSchedules = [];
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
-    
-    if (!schedules || typeof schedules !== 'object') return weekSchedules;
-    
-    Object.values(schedules).forEach(schedule => {
-        if (schedule && schedule.date >= startStr && schedule.date <= endStr) {
-            weekSchedules.push(schedule);
-        }
-    });
-    
-    return weekSchedules;
-}
-
-function getEmployeeSchedulesForWeek(employeeId, startDate, endDate) {
-    const employeeSchedules = [];
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
-    
-    if (!schedules || typeof schedules !== 'object') return employeeSchedules;
-    
-    Object.values(schedules).forEach(schedule => {
-        if (schedule && schedule.employeeId === employeeId && 
-            schedule.date >= startStr && 
-            schedule.date <= endStr) {
-            employeeSchedules.push(schedule);
-        }
-    });
-    
-    return employeeSchedules;
-}
-
-function calculateWeeklyHours(employeeId) {
-    const { startDate, endDate } = getWeekDates(currentWeek);
-    const weekSchedules = getEmployeeSchedulesForWeek(employeeId, startDate, endDate);
-    
-    let totalHours = 0;
-    weekSchedules.forEach(schedule => {
-        if (!schedule.isDayOff && schedule.startTime && schedule.endTime) {
-            totalHours += calculateShiftHours(schedule.startTime, schedule.endTime);
-        }
-    });
-    
-    return Math.round(totalHours * 10) / 10; // Round to 1 decimal place
-}
-
-function calculateMonthlyHours(employeeId) {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    const firstStr = firstDay.toISOString().split('T')[0];
-    const lastStr = lastDay.toISOString().split('T')[0];
-    
-    let totalHours = 0;
-    
-    if (!schedules || typeof schedules !== 'object') return totalHours;
-    
-    Object.values(schedules).forEach(schedule => {
-        if (schedule && schedule.employeeId === employeeId && 
-            schedule.date >= firstStr && 
-            schedule.date <= lastStr &&
-            !schedule.isDayOff) {
-            totalHours += calculateShiftHours(schedule.startTime, schedule.endTime);
-        }
-    });
-    
-    return Math.round(totalHours * 10) / 10;
-}
-
-function getThisWeekSchedule(employeeId) {
-    const { startDate } = getWeekDates(0);
-    const weekSchedule = getEmployeeSchedulesForWeek(employeeId, startDate, 
-        new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000));
-    
-    const workDays = weekSchedule.filter(s => !s.isDayOff).length;
-    const restDays = weekSchedule.filter(s => s.isDayOff).length;
-    
-    return {
-        workDays: workDays,
-        restDays: restDays,
-        totalShifts: weekSchedule.length
-    };
-}
-
-function formatDate(date) {
-    if (typeof date === 'string') {
-        date = new Date(date);
-    }
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}/${day}`;
-}
-
-function getDayName(date) {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return days[date.getDay()];
-}
-
-function refreshData() {
-    if (!database) {
-        showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
-        return;
-    }
-    
-    // Update Firebase connection
-    database.ref('.info/connected').once('value').then(snap => {
-        if (snap.val() === true) {
-            showMessage(currentLanguage === 'ja' ? 'データ同期完了' : '数据同步完成', 'success');
-            loadEmployees();
-            loadSchedules();
-        } else {
-            showMessage(currentLanguage === 'ja' ? 'サーバーに接続できません' : '无法连接服务器', 'error');
-        }
-    }).catch(error => {
-        showMessage(currentLanguage === 'ja' ? '更新エラー: ' : '刷新错误: ' + error.message, 'error');
-    });
-}
-
-// ==================== EXPORT FUNCTIONS ====================
-function copyEmployeeSchedule() {
-    if (!selectedEmployee) return;
-    copyScheduleAsText();
-}
-
-function printEmployeeSchedule() {
-    if (!selectedEmployee) return;
-    
-    const employee = employees.find(e => e.id === selectedEmployee);
-    if (!employee) return;
-    
-    // Directly call print function
-    printSchedule();
-    // Close employee detail modal
-    closeModal('employeeModal');
-}
-
-function copyScheduleAsText() {
-    if (!selectedEmployee) return;
-    
-    const employee = employees.find(e => e.id === selectedEmployee);
-    if (!employee) return;
-    
-    const { startDate, endDate } = getWeekDates(currentWeek);
-    const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
-    const weeklyHours = calculateWeeklyHours(selectedEmployee);
-    const monthlyHours = calculateMonthlyHours(selectedEmployee);
-    const days = generateWeekDays(startDate);
-    
-    // Generate formatted text
-    let text = `【${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}】\n`;
-    text += `${currentLanguage === 'ja' ? '職種:' : '职位:'} ${currentLanguage === 'ja' ? 
-        (employee.position === '厨房区' ? '厨房' : 'フロント') : 
-        (employee.position === '厨房区' ? '厨房' : '前台')}\n`;
-    text += `${currentLanguage === 'ja' ? '日付:' : '日期:'} ${formatDate(startDate)} ${currentLanguage === 'ja' ? '〜' : '至'} ${formatDate(endDate)}\n`;
-    text += `${currentLanguage === 'ja' ? '今週:' : '本周:'} ${weeklyHours}${currentLanguage === 'ja' ? '時間' : '小时'} | ${currentLanguage === 'ja' ? '今月:' : '本月:'} ${monthlyHours}${currentLanguage === 'ja' ? '時間' : '小时'}\n\n`;
-    text += `📅 ${currentLanguage === 'ja' ? '今週のスケジュール:' : '本周排班:'}\n`;
-    
-    // Day names for display
-    const dayNames = currentLanguage === 'ja' 
-        ? ['月', '火', '水', '木', '金', '土', '日']
-        : ['一', '二', '三', '四', '五', '六', '日'];
-    
-    days.forEach((day, index) => {
-        const schedule = weekSchedule.find(s => s.date === day.dateString);
-        const scheduleText = schedule ? 
-            (schedule.isDayOff ? '🏖️ ' + (currentLanguage === 'ja' ? '休み' : '休息') : `🕐 ${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}-${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}`) : 
-            '📭 ' + (currentLanguage === 'ja' ? 'なし' : '无');
-        
-        text += `${dayNames[index]} (${day.date}): ${scheduleText}\n`;
-    });
-    
-    text += `\n📍 ${currentLanguage === 'ja' ? '勤務エリア:' : '工作区域:'} ${employee.position === '厨房区' ? 
-        (currentLanguage === 'ja' ? '厨房 👨‍🍳' : '厨房 👨‍🍳') : 
-        (currentLanguage === 'ja' ? 'フロント/サービス 💁' : '前台/服务 💁')}\n`;
-    text += `📊 ${currentLanguage === 'ja' ? '今週:' : '本周:'} ${weekSchedule.filter(s => !s.isDayOff).length}${currentLanguage === 'ja' ? '勤務日' : '工作日'}, ${weekSchedule.filter(s => s.isDayOff).length}${currentLanguage === 'ja' ? '休日' : '休息日'}\n`;
-    text += `\n⏰ ${currentLanguage === 'ja' ? '生成日時:' : '生成时间:'} ${new Date().toLocaleString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    })}`;
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(text)
-        .then(() => {
-            showMessage(currentLanguage === 'ja' ? 'クリップボードにコピーしました' : '已复制到剪贴板', 'success');
-            closeModal('employeeModal');
-        })
-        .catch(err => {
-            console.error('Copy failed:', err);
-            
-            // Fallback
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showMessage(currentLanguage === 'ja' ? 'クリップボードにコピーしました' : '已复制到剪贴板', 'success');
-            } catch (err) {
-                showMessage(currentLanguage === 'ja' ? 'コピーに失敗しました' : '复制失败', 'error');
-            }
-            document.body.removeChild(textarea);
-            
-            closeModal('employeeModal');
-        });
-}
-
-function printSchedule() {
-    if (!selectedEmployee) return;
-    
-    const employee = employees.find(e => e.id === selectedEmployee);
-    if (!employee) return;
-    
-    const { startDate, endDate } = getWeekDates(currentWeek);
-    const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
-    const weeklyHours = calculateWeeklyHours(selectedEmployee);
-    const monthlyHours = calculateMonthlyHours(selectedEmployee);
-    
-    // Generate table row content
-    const tableRows = generateWeekDays(startDate).map(day => {
-        const schedule = weekSchedule.find(s => s.date === day.dateString);
-        const hours = schedule && !schedule.isDayOff ? 
-            calculateShiftHours(schedule.startTime, schedule.endTime) : 0;
-        
-        let scheduleTime = '-';
-        if (schedule && !schedule.isDayOff) {
-            scheduleTime = (schedule.startTime ? schedule.startTime.substring(0, 5) : '') + ' - ' + (schedule.endTime ? schedule.endTime.substring(0, 5) : '');
-        }
-        
-        const statusClass = schedule ? (schedule.isDayOff ? 'rest' : 'work') : '';
-        const statusText = schedule ? (schedule.isDayOff ? 
-            (currentLanguage === 'ja' ? '休み' : '休息') : 
-            (currentLanguage === 'ja' ? '勤務' : '工作')) : 
-            (currentLanguage === 'ja' ? 'なし' : '无');
-        
-        return `
-            <tr class="${statusClass}">
-                <td>${day.name}</td>
-                <td>${formatDate(day.dateString)}</td>
-                <td>${statusText}</td>
-                <td>${scheduleTime}</td>
-                <td>${hours ? hours + 'h' : '-'}</td>
-            </tr>
-        `;
-    }).join('');
-    
-    // Create print content
-    const printContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>鍛治町酒場 神田店 - ${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { font-family: 'Microsoft YaHei', sans-serif; padding: 20px; color: #1e293b; background: white; }
-                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #2563eb; }
-                .header h1 { color: #2563eb; margin: 0 0 10px 0; font-size: 28px; font-weight: 800; }
-                .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
-                .info-card { background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
-                .info-card h3 { color: #64748b; font-size: 14px; margin: 0 0 12px 0; font-weight: 600; text-transform: uppercase; }
-                .info-card p { color: #2563eb; font-size: 32px; font-weight: 800; margin: 0; }
-                .schedule-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-                .schedule-table th { background: #2563eb; color: white; padding: 16px; text-align: center; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); }
-                .schedule-table th:last-child { border-right: none; }
-                .schedule-table td { padding: 16px; border: 1px solid #e2e8f0; text-align: center; }
-                .schedule-table .work { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
-                .schedule-table .rest { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-                .summary { background: #dbeafe; padding: 24px; border-radius: 12px; color: #1e40af; border: 1px solid #bfdbfe; }
-                .summary h3 { font-size: 18px; margin: 0 0 16px 0; font-weight: 700; }
-                .summary p { margin: 8px 0; font-weight: 500; }
-                .footer { text-align: center; margin-top: 30px; color: #64748b; font-size: 14px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-                @media print {
-                    body { padding: 10px; }
-                    .no-print { display: none; }
-                    @page { margin: 0.5cm; }
-                    .header h1 { font-size: 24px; }
-                    .info-card p { font-size: 28px; }
-                }
-                @media (max-width: 768px) {
-                    .info-grid { grid-template-columns: 1fr; }
-                    .schedule-table th, .schedule-table td { padding: 12px; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>鍛治町酒場 神田店 - ${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}</h1>
-                <p>${currentLanguage === 'ja' ? '職種:' : '职位:'} ${currentLanguage === 'ja' ? 
-                    (employee.position === '厨房区' ? '厨房' : 'フロント') : 
-                    (employee.position === '厨房区' ? '厨房' : '前台')} | ${currentLanguage === 'ja' ? '日付:' : '日期:'} ${formatDate(startDate)} ${currentLanguage === 'ja' ? '〜' : '至'} ${formatDate(endDate)}</p>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-card">
-                    <h3>${currentLanguage === 'ja' ? '今週の時間' : '本周工时'}</h3>
-                    <p>${weeklyHours} ${currentLanguage === 'ja' ? '時間' : '小时'}</p>
-                </div>
-                <div class="info-card">
-                    <h3>${currentLanguage === 'ja' ? '今月の時間' : '本月工时'}</h3>
-                    <p>${monthlyHours} ${currentLanguage === 'ja' ? '時間' : '小时'}</p>
-                </div>
-            </div>
-            
-            <table class="schedule-table">
-                <thead>
-                    <tr>
-                        <th>${currentLanguage === 'ja' ? '曜日' : '星期'}</th>
-                        <th>${currentLanguage === 'ja' ? '日付' : '日期'}</th>
-                        <th>${currentLanguage === 'ja' ? '状態' : '状态'}</th>
-                        <th>${currentLanguage === 'ja' ? '勤務時間' : '工作时间'}</th>
-                        <th>${currentLanguage === 'ja' ? '時間' : '小时'}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
-            </table>
-            
-            <div class="summary">
-                <h3>${currentLanguage === 'ja' ? '今週の概要' : '本周概要'}</h3>
-                <p>${currentLanguage === 'ja' ? '勤務日:' : '工作日:'} ${weekSchedule.filter(s => !s.isDayOff).length} ${currentLanguage === 'ja' ? '日' : '天'}</p>
-                <p>${currentLanguage === 'ja' ? '休日:' : '休息日:'} ${weekSchedule.filter(s => s.isDayOff).length} ${currentLanguage === 'ja' ? '日' : '天'}</p>
-                <p>${currentLanguage === 'ja' ? '総時間:' : '总工时:'} ${weeklyHours} ${currentLanguage === 'ja' ? '時間' : '小时'}</p>
-            </div>
-            
-            <div class="footer">
-                <p>${currentLanguage === 'ja' ? '生成日時:' : '生成时间:'} ${new Date().toLocaleString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN')}</p>
-                <p class="no-print">${currentLanguage === 'ja' ? 'ヒント: Ctrl + P で印刷' : '提示: 按Ctrl+P打印'}</p>
-            </div>
-        </body>
-        </html>
-    `;
-    
-    // Directly open print dialog
-    try {
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(printContent);
-            printWindow.document.close();
-            
-            // Delay to ensure content loads
-            setTimeout(() => {
-                printWindow.print();
-                // Automatically close window after printing
-                setTimeout(() => {
-                    printWindow.close();
-                }, 500);
-            }, 500);
-            
-            showMessage(currentLanguage === 'ja' ? '印刷プレビューを開いています...' : '正在打开打印预览...', 'info');
-        }
-    } catch (error) {
-        console.error("Print error:", error);
-        showMessage(currentLanguage === 'ja' ? "印刷エラー: " : "打印错误: " + error.message, "error");
-    }
-}
-
-// ==================== SETUP EVENT LISTENERS ====================
-function setupEventListeners() {
-    // Language switch button
-    document.getElementById('languageSwitch').addEventListener('click', function() {
-        currentLanguage = currentLanguage === 'ja' ? 'zh' : 'ja';
-        updateLanguage();
-        localStorage.setItem('appLanguage', currentLanguage);
-    });
-    
-    // Close modal when clicking background
-    document.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
-            closeModal(event.target.id);
-        }
-    });
-    
-    // Prevent page scroll on iOS keyboard dismiss
-    document.addEventListener('focusout', function() {
-        setTimeout(() => {
-            window.scrollTo(0, 0);
-        }, 100);
-    });
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function(event) {
-        if (event.ctrlKey || event.metaKey) {
-            switch(event.key.toLowerCase()) {
-                case 'e':
-                    if (selectedEmployee) {
-                        editEmployeeSchedule();
-                        event.preventDefault();
-                    }
-                    break;
-                case 'c':
-                    if (selectedEmployee) {
-                        copyEmployeeSchedule();
-                        event.preventDefault();
-                    }
-                    break;
-                case 'p':
-                    if (selectedEmployee) {
-                        printEmployeeSchedule();
-                        event.preventDefault();
-                    }
-                    break;
-                case 's':
-                    refreshData();
-                    event.preventDefault();
-                    break;
-            }
-        }
-        
-        // Escape key to close modal
-        if (event.key === 'Escape') {
-            const openModal = document.querySelector('.modal[style*="display: flex"]');
-            if (openModal) {
-                closeModal(openModal.id);
-            }
-        }
-    });
-    
-    // Fix for iOS date input
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    dateInputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            this.type = 'text';
-            setTimeout(() => {
-                this.type = 'date';
-            }, 100);
-        });
-    });
-    
-    // Prevent zoom on iOS when focusing input
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            document.body.style.zoom = '100%';
-        });
-    });
-    
-    // Save state when leaving page
-    window.addEventListener('beforeunload', function(e) {
-        const activeView = document.querySelector('.view.active');
-        if (activeView) {
-            const lastView = activeView.id.replace('View', '');
-            localStorage.setItem('lastView', lastView);
-        }
-        localStorage.setItem('appLanguage', currentLanguage);
-    });
-    
-    // Restore saved view
-    const savedView = localStorage.getItem('lastView');
-    if (savedView) {
-        setTimeout(() => switchView(savedView), 100);
-    }
 }
 
 // ==================== ERROR HANDLING ====================
