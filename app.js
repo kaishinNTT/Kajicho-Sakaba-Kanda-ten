@@ -10,15 +10,6 @@ let currentPositionFilter = 'all';
 document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 Kajicho Kanda 排班系统启动");
     
-    // 防止iOS bounce
-    document.body.addEventListener('touchmove', function(e) {
-        if (e.target.classList.contains('weekly-schedule') || 
-            e.target.classList.contains('modal-content')) {
-            return;
-        }
-        e.preventDefault();
-    }, { passive: false });
-    
     // 初始化日期
     initApp();
     
@@ -28,9 +19,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 设置事件监听器
     setupEventListeners();
-    
-    // 添加toast样式
-    addToastStyles();
 });
 
 function initApp() {
@@ -83,8 +71,8 @@ function initWeekdaysSelector() {
             <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
                     data-day="${day.id}" data-date="${date.toISOString().split('T')[0]}"
                     onclick="toggleWeekday(this)">
-                <div style="font-weight: 600; font-size: 14px; color: var(--gray-700);">${day.label}</div>
-                <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">${month}/${dayNum}</div>
+                <div style="font-weight: 500; font-size: 14px;">${day.label}</div>
+                <div style="font-size: 11px; color: var(--gray); margin-top: 4px;">${month}/${dayNum}</div>
             </button>
         `;
     });
@@ -135,11 +123,6 @@ function setupEventListeners() {
         }
     });
     
-    // 防止iOS键盘收起时页面滚动
-    document.addEventListener('focusout', function() {
-        window.scrollTo(0, 0);
-    });
-    
     // 快捷键支持
     document.addEventListener('keydown', function(event) {
         if (event.ctrlKey || event.metaKey) {
@@ -169,178 +152,6 @@ function setupEventListeners() {
             }
         }
     });
-    
-    // Fix cho iOS date input
-    const dateInputs = document.querySelectorAll('input[type="date"]');
-    dateInputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            this.type = 'text';
-            setTimeout(() => {
-                this.type = 'date';
-            }, 100);
-        });
-    });
-    
-    // Ngăn chặn zoom trên iOS khi focus input
-    const inputs = document.querySelectorAll('input, select, textarea');
-    inputs.forEach(input => {
-        input.addEventListener('focus', function() {
-            document.body.style.zoom = '100%';
-        });
-    });
-    
-    // Lưu trạng thái khi rời trang
-    window.addEventListener('beforeunload', function(e) {
-        const lastView = document.querySelector('.view.active').id.replace('View', '');
-        localStorage.setItem('lastView', lastView);
-    });
-    
-    // Khôi phục view đã lưu
-    const savedView = localStorage.getItem('lastView');
-    if (savedView) {
-        setTimeout(() => switchView(savedView), 100);
-    }
-}
-
-// ==================== MODAL FUNCTIONS ====================
-function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    
-    // Focus vào input đầu tiên nếu có
-    setTimeout(() => {
-        const modal = document.getElementById(modalId);
-        const firstInput = modal.querySelector('input:not([type="hidden"]), select, button:not(.modal-close)');
-        if (firstInput && firstInput.type !== 'hidden') {
-            firstInput.focus();
-        }
-    }, 100);
-}
-
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    modal.style.display = 'none';
-    document.body.style.overflow = 'auto';
-    
-    if (modalId === 'employeeModal') {
-        selectedEmployee = null;
-    }
-}
-
-// ==================== MESSAGE FUNCTIONS ====================
-function addToastStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .toast-message {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            background: white;
-            border-radius: 12px;
-            padding: 16px 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            z-index: 2000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            max-width: 350px;
-            border-left: 4px solid var(--primary);
-        }
-        
-        .toast-message.show {
-            transform: translateX(0);
-        }
-        
-        .toast-content {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .toast-message i {
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-        
-        .toast-success {
-            border-left-color: var(--success);
-        }
-        
-        .toast-success i {
-            color: var(--success);
-        }
-        
-        .toast-error {
-            border-left-color: var(--danger);
-        }
-        
-        .toast-error i {
-            color: var(--danger);
-        }
-        
-        .toast-warning {
-            border-left-color: var(--warning);
-        }
-        
-        .toast-warning i {
-            color: var(--warning);
-        }
-        
-        .toast-info {
-            border-left-color: var(--primary);
-        }
-        
-        .toast-info i {
-            color: var(--primary);
-        }
-        
-        @media (max-width: 768px) {
-            .toast-message {
-                left: 20px;
-                right: 20px;
-                top: 80px;
-                transform: translateY(-100px);
-            }
-            
-            .toast-message.show {
-                transform: translateY(0);
-            }
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-function showMessage(message, type = 'info') {
-    // Tạo toast message
-    const toast = document.createElement('div');
-    toast.className = `toast-message toast-${type}`;
-    toast.innerHTML = `
-        <div class="toast-content">
-            <i class="fas ${
-                type === 'success' ? 'fa-check-circle' :
-                type === 'error' ? 'fa-exclamation-circle' :
-                type === 'warning' ? 'fa-exclamation-triangle' :
-                'fa-info-circle'
-            }"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    // Hiệu ứng xuất hiện
-    setTimeout(() => {
-        toast.classList.add('show');
-    }, 10);
-    
-    // Tự động biến mất sau 3 giây
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => {
-            if (toast.parentNode) {
-                document.body.removeChild(toast);
-            }
-        }, 300);
-    }, 3000);
 }
 
 // ==================== 时间验证函数 ====================
@@ -460,9 +271,6 @@ function switchView(viewName) {
             renderEmployeeCards();
             break;
     }
-    
-    // Lưu view vào localStorage
-    localStorage.setItem('lastView', viewName);
 }
 
 // ==================== EMPLOYEE MANAGEMENT ====================
@@ -529,9 +337,9 @@ function renderEmployeeCards() {
     if (frontDeskEmployees.length > 0) {
         html += `
             <div class="position-group">
-                <h3 class="position-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--primary);">
+                <h3 class="position-title">
                     <i class="fas fa-door-open"></i> 前台/服务区
-                    <span class="position-count" style="font-size: 12px; background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 12px;">${frontDeskEmployees.length}人</span>
+                    <span class="position-count">${frontDeskEmployees.length}人</span>
                 </h3>
                 <div class="position-cards">
                     ${frontDeskEmployees.map(emp => generateEmployeeCard(emp)).join('')}
@@ -543,9 +351,9 @@ function renderEmployeeCards() {
     if (kitchenEmployees.length > 0) {
         html += `
             <div class="position-group">
-                <h3 class="position-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--warning);">
+                <h3 class="position-title">
                     <i class="fas fa-utensils"></i> 厨房区
-                    <span class="position-count" style="font-size: 12px; background: var(--warning-light); color: var(--warning); padding: 2px 8px; border-radius: 12px;">${kitchenEmployees.length}人</span>
+                    <span class="position-count">${kitchenEmployees.length}人</span>
                 </h3>
                 <div class="position-cards">
                     ${kitchenEmployees.map(emp => generateEmployeeCard(emp)).join('')}
@@ -575,18 +383,18 @@ function generateEmployeeCard(employee) {
                 </div>
                 <div class="employee-stats">
                     <div class="stat-item">
-                        <i class="fas fa-clock" style="color: var(--primary);"></i>
-                        <span style="color: var(--gray-600);">本周:</span>
+                        <i class="fas fa-clock"></i>
+                        <span>本周: </span>
                         <span class="stat-value">${weeklyHours}h</span>
                     </div>
                     <div class="stat-item">
-                        <i class="fas fa-calendar-alt" style="color: var(--primary);"></i>
-                        <span style="color: var(--gray-600);">本月:</span>
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>本月: </span>
                         <span class="stat-value">${monthlyHours}h</span>
                     </div>
                     <div class="stat-item">
-                        <i class="fas fa-calendar-check" style="color: var(--primary);"></i>
-                        <span style="color: var(--gray-600);">${weekSchedule.workDays}天班</span>
+                        <i class="fas fa-calendar-check"></i>
+                        <span>${weekSchedule.workDays}天班</span>
                     </div>
                 </div>
             </div>
@@ -648,7 +456,7 @@ function showEmployeeWeekSchedule(employeeId) {
         if (schedule) {
             status = schedule.isDayOff ? 'rest' : 'work';
             timeText = schedule.isDayOff ? '' : `
-                <div style="font-size: 11px; margin-top: 4px; font-weight: 600; color: var(--success);">
+                <div style="font-size: 11px; margin-top: 4px; font-weight: 600;">
                     ${schedule.startTime.substring(0, 5)}-${schedule.endTime.substring(0, 5)}
                 </div>
             `;
@@ -656,8 +464,8 @@ function showEmployeeWeekSchedule(employeeId) {
         
         return `
             <div class="week-day ${status}">
-                <div style="font-weight: 600; color: var(--gray-700);">${day.name}</div>
-                <div style="font-size: 11px; color: var(--gray-500);">${day.date}</div>
+                <div style="font-weight: 500;">${day.name}</div>
+                <div style="font-size: 11px; opacity: 0.8;">${day.date}</div>
                 ${timeText}
             </div>
         `;
@@ -757,8 +565,6 @@ function updateAllEmployeeSelects() {
 
 function updateScheduleEmployeeSelect() {
     const select = document.getElementById('scheduleEmployee');
-    if (!select) return;
-    
     select.innerHTML = '<option value="">选择员工</option>';
     
     employees.sort((a, b) => a.name.localeCompare(b.name)).forEach(emp => {
@@ -987,10 +793,10 @@ function updateWeekdaysSelector() {
             <button type="button" class="weekday-btn ${day.default ? 'active' : ''} ${hasSchedule === 'rest' ? 'rest' : ''}" 
                     data-day="${day.id}" data-date="${dateString}"
                     onclick="toggleWeekday(this)">
-                <div style="font-weight: 600; font-size: 14px; color: ${hasSchedule === 'rest' ? 'var(--warning)' : 'var(--gray-700)'};">${day.label}</div>
-                <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">${month}/${dayNum}</div>
+                <div style="font-weight: 500; font-size: 14px;">${day.label}</div>
+                <div style="font-size: 11px; color: var(--gray); margin-top: 4px;">${month}/${dayNum}</div>
                 ${hasSchedule ? `
-                    <div style="font-size: 10px; margin-top: 2px; color: ${hasSchedule === 'rest' ? 'var(--warning)' : 'var(--success)'}; font-weight: 500;">
+                    <div style="font-size: 10px; margin-top: 2px; color: ${hasSchedule === 'rest' ? '#e9c46a' : '#2a9d8f'}">
                         ${hasSchedule === 'rest' ? '休息' : '有班'}
                     </div>
                 ` : ''}
@@ -1154,8 +960,8 @@ function updateRestDaysSelector() {
             <button type="button" class="weekday-btn" 
                     data-day="${day.id}" data-date="${date.toISOString().split('T')[0]}"
                     onclick="toggleRestDay(this)">
-                <div style="font-weight: 600; font-size: 14px; color: var(--gray-700);">${day.label}</div>
-                <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">${month}/${dayNum}</div>
+                <div style="font-weight: 500; font-size: 14px;">${day.label}</div>
+                <div style="font-size: 11px; color: var(--gray); margin-top: 4px;">${month}/${dayNum}</div>
             </button>
         `;
     });
@@ -1272,8 +1078,8 @@ function renderWeeklySchedule() {
                 const dayNum = date.getDate();
                 return `
                     <div class="week-header-cell">
-                        <div style="font-weight: 700; color: var(--dark);">${day.name}</div>
-                        <div style="font-size: 11px; color: var(--gray-500); margin-top: 2px;">${month}/${dayNum}</div>
+                        <div>${day.name}</div>
+                        <div style="font-size: 11px; opacity: 0.8;">${month}/${dayNum}</div>
                     </div>
                 `;
             }).join('')}
@@ -1288,10 +1094,10 @@ function renderWeeklySchedule() {
         html += `
             <div class="week-row">
                 <div class="week-cell">
-                    <div style="font-weight: 700; font-size: 14px; color: var(--dark);">${employee.name}</div>
-                    <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 6px;">${employee.position}</div>
-                    <div style="font-size: 11px; color: var(--primary); font-weight: 600;">
-                        <i class="fas fa-clock" style="font-size: 10px; margin-right: 4px;"></i> 本周: ${weeklyHours}h
+                    <div style="font-weight: 500; font-size: 14px;">${employee.name}</div>
+                    <div style="font-size: 12px; color: var(--gray); margin-bottom: 4px;">${employee.position}</div>
+                    <div style="font-size: 11px; color: var(--primary);">
+                        <i class="fas fa-clock" style="font-size: 10px;"></i> 本周: ${weeklyHours}h
                     </div>
                 </div>
                 ${days.map(day => {
@@ -1306,7 +1112,7 @@ function renderWeeklySchedule() {
                         } else {
                             scheduleClass = 'work';
                             scheduleText = `
-                                <div style="font-weight: 600;">${schedule.startTime.substring(0, 5)}</div>
+                                <div>${schedule.startTime.substring(0, 5)}</div>
                                 <div class="day-time">${schedule.endTime.substring(0, 5)}</div>
                             `;
                         }
@@ -1352,8 +1158,8 @@ function editDaySchedule(employeeId, date) {
                 <div class="employee-display">
                     <div class="employee-avatar-small">${employee.name.charAt(0)}</div>
                     <div>
-                        <div style="font-weight: 700; color: var(--dark);">${employee.name}</div>
-                        <div style="font-size: 14px; color: var(--gray-500);">${employee.position}</div>
+                        <div style="font-weight: 500;">${employee.name}</div>
+                        <div style="font-size: 14px; color: var(--gray);">${employee.position}</div>
                     </div>
                 </div>
             </div>
@@ -1361,8 +1167,8 @@ function editDaySchedule(employeeId, date) {
             <div class="form-group">
                 <label>日期</label>
                 <div class="date-display">
-                    <div style="font-weight: 700; color: var(--dark);">${formatDate(date)}</div>
-                    <div style="font-size: 14px; color: var(--gray-500);">${getDayName(new Date(date))}</div>
+                    <div style="font-weight: 500;">${formatDate(date)}</div>
+                    <div style="font-size: 14px; color: var(--gray);">${getDayName(new Date(date))}</div>
                 </div>
             </div>
             
@@ -1556,136 +1362,107 @@ function printAllSchedule() {
         <head>
             <title>Kajicho Kanda - 本周排班表 - ${formatDate(startDate)} 至 ${formatDate(endDate)}</title>
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
                 body { 
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; 
+                    font-family: 'Microsoft YaHei', sans-serif; 
                     padding: 20px; 
-                    color: #1e293b;
-                    background: white;
+                    color: #333;
                     font-size: 14px;
-                    line-height: 1.5;
                 }
                 .print-header { 
                     text-align: center; 
                     margin-bottom: 30px; 
                     padding-bottom: 20px; 
-                    border-bottom: 2px solid #2563eb; 
+                    border-bottom: 2px solid #2a9d8f; 
                 }
                 .print-header h1 { 
-                    color: #2563eb; 
+                    color: #2a9d8f; 
                     margin: 0 0 10px 0; 
                     font-size: 24px;
-                    font-weight: 800;
-                }
-                .print-header p {
-                    color: #64748b;
-                    font-size: 14px;
-                    font-weight: 500;
                 }
                 .print-info {
-                    display: grid;
-                    grid-template-columns: repeat(4, 1fr);
-                    gap: 15px;
-                    margin-bottom: 25px;
-                    padding: 20px;
-                    background: #f8fafc;
-                    border-radius: 12px;
-                    border: 1px solid #e2e8f0;
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
                 }
                 .info-item {
                     text-align: center;
                 }
                 .info-item h3 {
-                    color: #64748b;
+                    color: #666;
                     font-size: 12px;
-                    margin: 0 0 8px 0;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
+                    margin: 0 0 5px 0;
                 }
                 .info-item p {
-                    color: #2563eb;
-                    font-size: 20px;
-                    font-weight: 800;
+                    color: #2a9d8f;
+                    font-size: 18px;
+                    font-weight: bold;
                     margin: 0;
                 }
                 .schedule-table { 
                     width: 100%; 
-                    border-collapse: separate; 
-                    border-spacing: 0;
+                    border-collapse: collapse; 
                     margin-bottom: 30px;
                     font-size: 13px;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 12px;
-                    overflow: hidden;
                 }
                 .schedule-table th { 
-                    background: #2563eb; 
+                    background: #2a9d8f; 
                     color: white; 
-                    padding: 16px 12px; 
+                    padding: 12px 8px; 
                     text-align: center; 
-                    font-weight: 700;
-                    border-right: 1px solid rgba(255,255,255,0.2);
-                    font-size: 13px;
-                }
-                .schedule-table th:last-child {
-                    border-right: none;
+                    border: 1px solid #ddd;
+                    font-weight: 500;
                 }
                 .schedule-table td { 
-                    padding: 14px 12px; 
-                    border: 1px solid #e2e8f0; 
+                    padding: 10px 8px; 
+                    border: 1px solid #ddd; 
                     text-align: center;
                     vertical-align: top;
-                    background: white;
+                    min-height: 60px;
                 }
                 .schedule-table .work { 
-                    background: #d1fae5; 
-                    color: #065f46;
-                    border-color: #a7f3d0;
+                    background: #e9f5f3; 
+                    color: #264653;
                 }
                 .schedule-table .rest { 
-                    background: #fef3c7; 
-                    color: #92400e;
-                    border-color: #fde68a;
+                    background: #fdf7e8; 
+                    color: #e9c46a;
                 }
                 .employee-name {
-                    font-weight: 800;
+                    font-weight: 600;
                     font-size: 14px;
-                    color: #1e293b;
-                    margin-bottom: 4px;
+                    color: #264653;
                 }
                 .employee-position {
                     font-size: 12px;
-                    color: #64748b;
-                    font-weight: 500;
+                    color: #666;
                 }
                 .schedule-time {
                     font-size: 12px;
-                    font-weight: 700;
-                    margin: 4px 0;
-                    color: #059669;
+                    font-weight: 500;
+                    margin: 3px 0;
                 }
                 .schedule-rest {
                     font-size: 12px;
-                    font-weight: 700;
-                    color: #d97706;
+                    font-weight: 500;
+                    color: #e9c46a;
                 }
                 .day-header {
                     background: #f1f5f9;
                     padding: 8px;
-                    border-bottom: 2px solid #2563eb;
+                    border-bottom: 2px solid #2a9d8f;
                 }
                 .day-name {
-                    font-weight: 800;
+                    font-weight: 600;
                     font-size: 14px;
-                    color: #1e293b;
+                    color: #264653;
                 }
                 .day-date {
                     font-size: 12px;
-                    color: #64748b;
-                    font-weight: 500;
+                    color: #666;
                 }
                 .summary-grid {
                     display: grid;
@@ -1694,69 +1471,34 @@ function printAllSchedule() {
                     margin-top: 30px;
                 }
                 .summary-card {
-                    background: #dbeafe;
-                    padding: 20px;
-                    border-radius: 12px;
+                    background: #e9f5f3;
+                    padding: 15px;
+                    border-radius: 8px;
                     text-align: center;
-                    border: 1px solid #bfdbfe;
                 }
                 .summary-card h4 {
-                    color: #1e40af;
-                    font-size: 22px;
-                    margin: 0 0 8px 0;
-                    font-weight: 800;
+                    color: #2a9d8f;
+                    font-size: 20px;
+                    margin: 0 0 5px 0;
                 }
                 .summary-card p {
-                    color: #3730a3;
+                    color: #666;
                     font-size: 12px;
                     margin: 0;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
                 }
                 .footer { 
                     text-align: center; 
                     margin-top: 30px; 
-                    color: #64748b; 
+                    color: #666; 
                     font-size: 12px; 
                     padding-top: 20px;
-                    border-top: 1px solid #e2e8f0;
-                }
-                .footer p {
-                    margin: 4px 0;
+                    border-top: 1px solid #ddd;
                 }
                 @media print {
                     body { padding: 10px; }
                     @page { 
                         margin: 0.5cm;
                         size: landscape;
-                    }
-                    .print-header h1 {
-                        font-size: 20px;
-                    }
-                    .print-info {
-                        padding: 15px;
-                    }
-                    .info-item p {
-                        font-size: 18px;
-                    }
-                    .schedule-table {
-                        font-size: 12px;
-                    }
-                    .summary-card h4 {
-                        font-size: 20px;
-                    }
-                }
-                @media (max-width: 768px) {
-                    .print-info, .summary-grid {
-                        grid-template-columns: repeat(2, 1fr);
-                    }
-                    .schedule-table {
-                        font-size: 10px;
-                    }
-                    .schedule-table th,
-                    .schedule-table td {
-                        padding: 10px 8px;
                     }
                 }
             </style>
@@ -1789,7 +1531,7 @@ function printAllSchedule() {
             <table class="schedule-table">
                 <thead>
                     <tr>
-                        <th style="width: 120px; text-align: left; padding-left: 16px;">员工 / 职位</th>
+                        <th style="width: 120px;">员工 / 职位</th>
     `;
     
     // Thêm ngày tháng cho mỗi ngày
@@ -1829,10 +1571,10 @@ function printAllSchedule() {
         
         printContent += `
             <tr>
-                <td style="text-align: left; padding-left: 16px;">
+                <td style="text-align: left; padding-left: 12px;">
                     <div class="employee-name">${employee.name}</div>
                     <div class="employee-position">${employee.position}</div>
-                    <div style="font-size: 11px; color: #2563eb; margin-top: 6px; font-weight: 700;">
+                    <div style="font-size: 11px; color: #2a9d8f; margin-top: 5px;">
                         本周工时: ${weeklyHours}h
                     </div>
                 </td>
@@ -1852,11 +1594,11 @@ function printAllSchedule() {
                     const hours = calculateShiftHours(schedule.startTime, schedule.endTime);
                     scheduleContent = `
                         <div class="schedule-time">${schedule.startTime.substring(0, 5)}-${schedule.endTime.substring(0, 5)}</div>
-                        <div style="font-size: 11px; color: #047857; font-weight: 600;">${hours}h</div>
+                        <div style="font-size: 11px; color: #666;">${hours}h</div>
                     `;
                 }
             } else {
-                scheduleContent = '<div style="color: #94a3b8; font-size: 12px; font-style: italic;">-</div>';
+                scheduleContent = '<div style="color: #999; font-size: 12px;">-</div>';
             }
             
             printContent += `
@@ -1898,13 +1640,7 @@ function printAllSchedule() {
             </div>
             
             <div class="footer">
-                <p>生成时间：${new Date().toLocaleString('zh-CN', { 
-                    year: 'numeric', 
-                    month: '2-digit', 
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                })}</p>
+                <p>生成时间：${new Date().toLocaleString('zh-CN')}</p>
                 <p>Kajicho Kanda 排班系统 - 按 Ctrl + P 打印</p>
             </div>
         </body>
@@ -2047,35 +1783,25 @@ function printSchedule() {
         <head>
             <title>Kajicho Kanda - ${employee.name} 排班表</title>
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body { font-family: 'Microsoft YaHei', sans-serif; padding: 20px; color: #1e293b; background: white; }
-                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #2563eb; }
-                .header h1 { color: #2563eb; margin: 0 0 10px 0; font-size: 28px; font-weight: 800; }
+                body { font-family: 'Microsoft YaHei', sans-serif; padding: 20px; color: #333; }
+                .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #2a9d8f; }
+                .header h1 { color: #2a9d8f; margin: 0 0 10px 0; }
                 .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
-                .info-card { background: #f8fafc; padding: 24px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
-                .info-card h3 { color: #64748b; font-size: 14px; margin: 0 0 12px 0; font-weight: 600; text-transform: uppercase; }
-                .info-card p { color: #2563eb; font-size: 32px; font-weight: 800; margin: 0; }
-                .schedule-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 30px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-                .schedule-table th { background: #2563eb; color: white; padding: 16px; text-align: center; font-weight: 700; border-right: 1px solid rgba(255,255,255,0.2); }
-                .schedule-table th:last-child { border-right: none; }
-                .schedule-table td { padding: 16px; border: 1px solid #e2e8f0; text-align: center; }
-                .schedule-table .work { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
-                .schedule-table .rest { background: #fef3c7; color: #92400e; border-color: #fde68a; }
-                .summary { background: #dbeafe; padding: 24px; border-radius: 12px; color: #1e40af; border: 1px solid #bfdbfe; }
-                .summary h3 { font-size: 18px; margin: 0 0 16px 0; font-weight: 700; }
-                .summary p { margin: 8px 0; font-weight: 500; }
-                .footer { text-align: center; margin-top: 30px; color: #64748b; font-size: 14px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                .info-card { background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; }
+                .info-card h3 { color: #666; font-size: 14px; margin: 0 0 10px 0; }
+                .info-card p { color: #2a9d8f; font-size: 28px; font-weight: bold; margin: 0; }
+                .schedule-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                .schedule-table th { background: #2a9d8f; color: white; padding: 12px; text-align: center; }
+                .schedule-table td { padding: 12px; border: 1px solid #ddd; text-align: center; }
+                .schedule-table .work { background: #e9f5f3; color: #264653; }
+                .schedule-table .rest { background: #fdf7e8; color: #e9c46a; }
+                .summary { background: #e9f5f3; padding: 20px; border-radius: 10px; color: #264653; }
+                .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
                 @media print {
                     body { padding: 10px; }
                     .no-print { display: none; }
                     @page { margin: 0.5cm; }
-                    .header h1 { font-size: 24px; }
-                    .info-card p { font-size: 28px; }
-                }
-                @media (max-width: 768px) {
-                    .info-grid { grid-template-columns: 1fr; }
-                    .schedule-table th, .schedule-table td { padding: 12px; }
                 }
             </style>
         </head>
@@ -2166,12 +1892,12 @@ function showTodaySchedule() {
         let html = '';
         
         if (frontDeskSchedules.length > 0) {
-            html += `<h4 style="margin-bottom: 16px; color: #2563eb; font-weight: 700;"><i class="fas fa-door-open"></i> 前台/服务区</h4>`;
+            html += `<h4 style="margin-bottom: 12px; color: #2a9d8f;"><i class="fas fa-door-open"></i> 前台/服务区</h4>`;
             html += frontDeskSchedules.map(schedule => createTodayItem(schedule)).join('');
         }
         
         if (kitchenSchedules.length > 0) {
-            html += `<h4 style="margin-top: 24px; margin-bottom: 16px; color: #f59e0b; font-weight: 700;"><i class="fas fa-utensils"></i> 厨房区</h4>`;
+            html += `<h4 style="margin-top: 20px; margin-bottom: 12px; color: #e9c46a;"><i class="fas fa-utensils"></i> 厨房区</h4>`;
             html += kitchenSchedules.map(schedule => createTodayItem(schedule)).join('');
         }
         
@@ -2185,15 +1911,15 @@ function createTodayItem(schedule) {
     return `
         <div class="today-item ${schedule.isDayOff ? 'rest' : 'work'}">
             <div>
-                <div style="font-weight: 700; color: var(--dark);">${schedule.employeeName}</div>
-                <div style="font-size: 13px; color: var(--gray-500); font-weight: 500;">${schedule.employeePosition}</div>
+                <div style="font-weight: 500;">${schedule.employeeName}</div>
+                <div style="font-size: 13px; color: var(--gray);">${schedule.employeePosition}</div>
             </div>
             <div style="text-align: right;">
-                <div style="font-weight: 700; color: ${schedule.isDayOff ? 'var(--warning)' : 'var(--success)'};">
+                <div style="font-weight: 500; color: ${schedule.isDayOff ? 'var(--warning)' : 'var(--success)'}">
                     ${schedule.isDayOff ? '休息日' : `${schedule.startTime.substring(0, 5)} - ${schedule.endTime.substring(0, 5)}`}
                 </div>
                 ${!schedule.isDayOff ? `
-                    <div style="font-size: 12px; color: var(--gray-500); font-weight: 500;">
+                    <div style="font-size: 12px; color: var(--gray);">
                         工时: ${calculateShiftHours(schedule.startTime, schedule.endTime)}h
                     </div>
                 ` : ''}
@@ -2293,93 +2019,65 @@ function generateWeekDays(startDate) {
     return days;
 }
 
-function getWeekSchedules(startDate, endDate) {
-    const weekSchedules = [];
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
-    
-    Object.values(schedules).forEach(schedule => {
-        if (schedule.date >= startStr && schedule.date <= endStr) {
-            weekSchedules.push(schedule);
-        }
-    });
-    
-    return weekSchedules;
-}
-
 function getEmployeeSchedulesForWeek(employeeId, startDate, endDate) {
-    const employeeSchedules = [];
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
-    
-    Object.values(schedules).forEach(schedule => {
-        if (schedule.employeeId === employeeId && 
-            schedule.date >= startStr && 
-            schedule.date <= endStr) {
-            employeeSchedules.push(schedule);
-        }
+    return Object.values(schedules).filter(schedule => {
+        return schedule.employeeId === employeeId && 
+               schedule.date >= startDate.toISOString().split('T')[0] && 
+               schedule.date <= endDate.toISOString().split('T')[0];
     });
-    
-    return employeeSchedules;
 }
 
-function calculateWeeklyHours(employeeId) {
-    const { startDate, endDate } = getWeekDates(currentWeek);
-    const weekSchedules = getEmployeeSchedulesForWeek(employeeId, startDate, endDate);
-    
-    let totalHours = 0;
-    weekSchedules.forEach(schedule => {
-        if (!schedule.isDayOff && schedule.startTime && schedule.endTime) {
-            totalHours += calculateShiftHours(schedule.startTime, schedule.endTime);
-        }
+function getWeekSchedules(startDate, endDate) {
+    return Object.values(schedules).filter(schedule => {
+        const scheduleDate = schedule.date;
+        return scheduleDate >= startDate.toISOString().split('T')[0] && 
+               scheduleDate <= endDate.toISOString().split('T')[0];
     });
-    
-    return Math.round(totalHours * 10) / 10; // Làm tròn 1 số thập phân
-}
-
-function calculateMonthlyHours(employeeId) {
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    const firstStr = firstDay.toISOString().split('T')[0];
-    const lastStr = lastDay.toISOString().split('T')[0];
-    
-    let totalHours = 0;
-    Object.values(schedules).forEach(schedule => {
-        if (schedule.employeeId === employeeId && 
-            schedule.date >= firstStr && 
-            schedule.date <= lastStr &&
-            !schedule.isDayOff) {
-            totalHours += calculateShiftHours(schedule.startTime, schedule.endTime);
-        }
-    });
-    
-    return Math.round(totalHours * 10) / 10;
 }
 
 function getThisWeekSchedule(employeeId) {
-    const { startDate } = getWeekDates(0);
-    const weekSchedule = getEmployeeSchedulesForWeek(employeeId, startDate, 
-        new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000));
-    
-    const workDays = weekSchedule.filter(s => !s.isDayOff).length;
-    const restDays = weekSchedule.filter(s => s.isDayOff).length;
+    const { startDate, endDate } = getWeekDates(0);
+    const weekSchedules = getEmployeeSchedulesForWeek(employeeId, startDate, endDate);
     
     return {
-        workDays: workDays,
-        restDays: restDays,
-        totalShifts: weekSchedule.length
+        workDays: weekSchedules.filter(s => !s.isDayOff).length,
+        restDays: weekSchedules.filter(s => s.isDayOff).length,
+        schedules: weekSchedules
     };
 }
 
-function formatDate(date) {
-    if (typeof date === 'string') {
-        date = new Date(date);
-    }
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}月${day}日`;
+function calculateWeeklyHours(employeeId) {
+    const { startDate, endDate } = getWeekDates(0);
+    const weekSchedules = getEmployeeSchedulesForWeek(employeeId, startDate, endDate);
+    
+    return weekSchedules.reduce((total, schedule) => {
+        if (schedule.isDayOff) return total;
+        return total + calculateShiftHours(schedule.startTime, schedule.endTime);
+    }, 0);
+}
+
+function calculateMonthlyHours(employeeId) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    const monthSchedules = Object.values(schedules).filter(schedule => {
+        if (schedule.employeeId !== employeeId || schedule.isDayOff) return false;
+        const scheduleDate = new Date(schedule.date);
+        return scheduleDate >= startOfMonth && scheduleDate <= endOfMonth;
+    });
+    
+    return monthSchedules.reduce((total, schedule) => {
+        return total + calculateShiftHours(schedule.startTime, schedule.endTime);
+    }, 0);
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-CN', {
+        month: 'long',
+        day: 'numeric'
+    });
 }
 
 function getDayName(date) {
@@ -2387,161 +2085,116 @@ function getDayName(date) {
     return days[date.getDay()];
 }
 
+// ==================== MODAL FUNCTIONS ====================
+function openModal(modalId) {
+    document.getElementById(modalId).style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
 function refreshData() {
-    // Cập nhật kết nối Firebase
-    database.ref('.info/connected').once('value').then(snap => {
-        if (snap.val() === true) {
-            showMessage('数据同步完成', 'success');
-            loadEmployees();
-            loadSchedules();
-        } else {
-            showMessage('无法连接到服务器', 'error');
-        }
-    });
+    loadEmployees();
+    loadSchedules();
+    showMessage('数据已刷新', 'success');
 }
 
-// ==================== ERROR HANDLING ====================
-// Xử lý lỗi toàn cục
-window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.error('JavaScript Error:', msg, '\nURL:', url, '\nLine:', lineNo, '\nColumn:', columnNo, '\nError object:', error);
-    showMessage('发生错误，请刷新页面重试', 'error');
-    return false;
-};
-
-// ==================== INITIAL LOAD ====================
-// Khởi động ứng dụng
-console.log("✅ Kajicho Kanda 排班系统已完全加载");
-
-// Thêm vào cuối file app.js:
-
-// ==================== ENHANCED UX FEATURES ====================
-
-// Double-tap to zoom prevention for iPad
-document.addEventListener('touchend', function(e) {
-    const now = Date.now();
-    if (e.target.classList.contains('day-schedule-item') || 
-        e.target.classList.contains('employee-card')) {
-        if (now - (this.lastTouchEnd || 0) < 300) {
-            e.preventDefault();
-            e.target.click();
-        }
-        this.lastTouchEnd = now;
-    }
-}, false);
-
-// Better keyboard navigation for desktop
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        const openModal = document.querySelector('.modal[style*="display: flex"]');
-        if (openModal) {
-            closeModal(openModal.id);
-        }
-    }
+function showMessage(text, type = 'info') {
+    // 移除现有消息
+    const existingMessage = document.querySelector('.app-message');
+    if (existingMessage) existingMessage.remove();
     
-    // Tab navigation trong modal
-    if (e.key === 'Tab' && e.target.classList.contains('modal-content')) {
-        e.preventDefault();
-        const focusable = document.querySelectorAll('.modal-content input, .modal-content select, .modal-content button:not(.modal-close)');
-        const currentIndex = Array.from(focusable).indexOf(document.activeElement);
-        let nextIndex;
-        
-        if (e.shiftKey) {
-            nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
-        } else {
-            nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
-        }
-        
-        focusable[nextIndex].focus();
-    }
-});
-
-// Auto-focus improvements
-function enhanceAutoFocus() {
-    // Auto-focus vào search khi vào employee view
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.nav-btn[data-view="employees"]')) {
-            setTimeout(() => {
-                const searchInput = document.getElementById('employeeSearch');
-                if (searchInput) searchInput.focus();
-            }, 300);
-        }
-    });
-    
-    // Auto-focus vào name input khi mở add employee modal
-    document.getElementById('addEmployeeModal')?.addEventListener('shown', function() {
-        const nameInput = document.getElementById('newEmployeeName');
-        if (nameInput) {
-            setTimeout(() => nameInput.focus(), 100);
-        }
-    });
-}
-
-// Gọi các hàm enhance
-document.addEventListener('DOMContentLoaded', function() {
-    enhanceAutoFocus();
-    
-    // Thêm loading indicator
-    document.body.insertAdjacentHTML('beforeend', `
-        <div id="global-loader" style="
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            flex-direction: column;
-        ">
-            <div style="
-                width: 50px;
-                height: 50px;
-                border: 3px solid var(--primary-light);
-                border-top-color: var(--primary);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            "></div>
-            <p style="margin-top: 20px; color: var(--primary); font-weight: 600;">加载中...</p>
-        </div>
-    `);
-    
-    // Thêm animation cho spinner
-    const spinStyle = document.createElement('style');
-    spinStyle.textContent = `
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+    const message = document.createElement('div');
+    message.className = `app-message message-${type}`;
+    message.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 
+                       type === 'error' ? 'fa-exclamation-circle' : 
+                       type === 'warning' ? 'fa-exclamation-triangle' : 
+                       'fa-info-circle'}"></i>
+        <span>${text}</span>
     `;
-    document.head.appendChild(spinStyle);
-});
-
-// Hàm loading helper
-function showLoader(show = true) {
-    const loader = document.getElementById('global-loader');
-    if (loader) {
-        loader.style.display = show ? 'flex' : 'none';
-    }
-}
-
-// Optimize Firebase operations cho mạng chậm
-function optimizeFirebaseCalls() {
-    // Debounce schedule updates
-    let scheduleUpdateTimeout;
-    const originalRender = renderWeeklySchedule;
-    renderWeeklySchedule = function() {
-        clearTimeout(scheduleUpdateTimeout);
-        scheduleUpdateTimeout = setTimeout(() => {
-            originalRender.call(this);
-        }, 300);
-    };
     
-    // Cache employees locally
-    if (!localStorage.getItem('employees_cache')) {
-        setTimeout(() => {
-            localStorage.setItem('employees_cache', JSON.stringify(employees));
-        }, 5000);
+    document.body.appendChild(message);
+    
+    setTimeout(() => {
+        message.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        message.classList.remove('show');
+        setTimeout(() => message.remove(), 300);
+    }, 3000);
+}
+
+// 添加消息样式
+const messageStyle = document.createElement('style');
+messageStyle.textContent = `
+    .app-message {
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        padding: 14px 24px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 10000;
+        opacity: 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        font-weight: 500;
+        max-width: 90%;
+        backdrop-filter: blur(10px);
+    }
+    .app-message.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    .message-success {
+        background: rgba(42, 157, 143, 0.95);
+        color: white;
+        border: 1px solid rgba(42, 157, 143, 0.3);
+    }
+    .message-error {
+        background: rgba(231, 111, 81, 0.95);
+        color: white;
+        border: 1px solid rgba(231, 111, 81, 0.3);
+    }
+    .message-warning {
+        background: rgba(233, 196, 106, 0.95);
+        color: white;
+        border: 1px solid rgba(233, 196, 106, 0.3);
+    }
+    .message-info {
+        background: rgba(42, 157, 143, 0.95);
+        color: white;
+        border: 1px solid rgba(42, 157, 143, 0.3);
+    }
+    .app-message i {
+        font-size: 18px;
+    }
+`;
+document.head.appendChild(messageStyle);
+
+// 在排班表单添加休息日按钮
+function addRestDayButton() {
+    const scheduleForm = document.querySelector('.schedule-form');
+    if (scheduleForm && !document.querySelector('.add-rest-day-btn')) {
+        const restDayButton = document.createElement('button');
+        restDayButton.className = 'add-rest-day-btn';
+        restDayButton.innerHTML = '<i class="fas fa-umbrella-beach"></i> 设置休息日';
+        restDayButton.onclick = showSetRestDaysModal;
+        
+        const actionButtons = document.querySelector('.action-buttons');
+        if (actionButtons) {
+            scheduleForm.insertBefore(restDayButton, actionButtons);
+        }
     }
 }
 
-// Gọi optimization
-optimizeFirebaseCalls();
+// 在初始化时添加休息日按钮
+setTimeout(addRestDayButton, 1000);
