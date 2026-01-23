@@ -29,6 +29,7 @@ function initApp() {
     document.getElementById('scheduleDate').value = todayStr;
     document.getElementById('scheduleDate').min = todayStr;
     document.getElementById('quickWeekDate').value = todayStr;
+    document.getElementById('quickAllDate').value = todayStr;
     
     // 初始化工作日选择器
     initWeekdaysSelector();
@@ -52,16 +53,33 @@ function initWeekdaysSelector() {
     ];
     
     const container = document.getElementById('weekdaysSelector');
-    container.innerHTML = weekdays.map(day => `
+    const container2 = document.getElementById('quickAllWeekdays');
+    
+    const weekdayHTML = weekdays.map(day => `
         <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
                 data-day="${day.id}" onclick="toggleWeekday(this)">
             ${day.label}
         </button>
     `).join('');
+    
+    container.innerHTML = weekdayHTML;
+    if (container2) container2.innerHTML = weekdayHTML;
 }
 
 function toggleWeekday(button) {
     button.classList.toggle('active');
+}
+
+function setAllWeekdays() {
+    document.querySelectorAll('.weekday-btn').forEach(btn => {
+        btn.classList.add('active');
+    });
+}
+
+function clearWeekdays() {
+    document.querySelectorAll('.weekday-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
 }
 
 function updateCurrentDate() {
@@ -125,7 +143,8 @@ function switchView(viewName) {
     document.getElementById(viewName + 'View').classList.add('active');
     
     // 激活对应的导航按钮
-    document.querySelector(`.nav-btn[data-view="${viewName}"]`).classList.add('active');
+    const navBtn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
+    if (navBtn) navBtn.classList.add('active');
     
     // 视图特定的初始化
     switch(viewName) {
@@ -162,6 +181,7 @@ function loadEmployees() {
         
         renderEmployeeCards();
         updateAllEmployeeSelects();
+        updateShareButton();
     });
 }
 
@@ -231,42 +251,6 @@ function renderEmployeeCards() {
     }
     
     container.innerHTML = html;
-    
-    // 添加CSS样式
-    const style = document.createElement('style');
-    style.textContent = `
-        .position-group {
-            margin-bottom: 24px;
-        }
-        .position-title {
-            font-size: 14px;
-            color: var(--gray);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--light-gray);
-        }
-        .position-count {
-            margin-left: auto;
-            background: var(--light);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 12px;
-            color: var(--primary);
-        }
-        .position-cards {
-            display: grid;
-            gap: 12px;
-        }
-        @media (min-width: 768px) {
-            .position-cards {
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            }
-        }
-    `;
-    document.head.appendChild(style);
 }
 
 function generateEmployeeCard(employee) {
@@ -342,6 +326,9 @@ function showEmployeeDetail(employeeId) {
     // 显示本周排班
     showEmployeeWeekSchedule(employeeId);
     
+    // 更新分享按钮状态
+    updateShareButton();
+    
     openModal('employeeModal');
 }
 
@@ -374,6 +361,17 @@ function showEmployeeWeekSchedule(employeeId) {
             </div>
         `;
     }).join('');
+}
+
+function updateShareButton() {
+    const shareButton = document.getElementById('shareButton');
+    if (selectedEmployee) {
+        shareButton.disabled = false;
+        shareButton.classList.add('primary');
+    } else {
+        shareButton.disabled = true;
+        shareButton.classList.remove('primary');
+    }
 }
 
 function showAddEmployee() {
@@ -455,6 +453,7 @@ function deleteCurrentEmployee() {
         closeModal('employeeModal');
         showMessage(`员工 ${employee.name} 已删除`, 'success');
         selectedEmployee = null;
+        updateShareButton();
     })
     .catch(error => {
         showMessage('删除失败: ' + error.message, 'error');
@@ -508,6 +507,17 @@ function selectScheduleType(type) {
         btn.classList.remove('active');
     });
     document.querySelector(`.type-btn[data-type="${type}"]`).classList.add('active');
+}
+
+function setTimePreset(start, end) {
+    document.getElementById('scheduleStart').value = start;
+    document.getElementById('scheduleEnd').value = end;
+    showMessage(`已设置时间: ${start} - ${end}`, 'info');
+}
+
+function setQuickTimePreset(start, end) {
+    document.getElementById('quickWeekStart').value = start;
+    document.getElementById('quickWeekEnd').value = end;
 }
 
 function addSchedule() {
@@ -575,6 +585,8 @@ function addSchedule() {
         .then(() => {
             resetScheduleForm();
             showMessage('排班更新成功', 'success');
+            // 强制刷新本周视图
+            renderWeeklySchedule();
         })
         .catch(error => {
             showMessage('更新失败: ' + error.message, 'error');
@@ -587,6 +599,8 @@ function addSchedule() {
         .then(() => {
             resetScheduleForm();
             showMessage('排班添加成功', 'success');
+            // 强制刷新本周视图
+            renderWeeklySchedule();
         })
         .catch(error => {
             showMessage('添加失败: ' + error.message, 'error');
@@ -634,6 +648,7 @@ function applyQuickWeekSchedule() {
     const startDate = document.getElementById('quickWeekDate').value;
     const startTime = document.getElementById('quickWeekStart').value;
     const endTime = document.getElementById('quickWeekEnd').value;
+    const repeatWeeks = parseInt(document.getElementById('repeatWeeks').value);
     
     if (!employeeId) {
         showMessage('请选择员工', 'warning');
@@ -671,8 +686,8 @@ function applyQuickWeekSchedule() {
     const baseDate = new Date(startDate);
     const promises = [];
     
-    // 为接下来4周设置排班
-    for (let week = 0; week < 4; week++) {
+    // 为指定周数设置排班
+    for (let week = 0; week < repeatWeeks; week++) {
         for (let i = 0; i < 7; i++) {
             const date = new Date(baseDate);
             date.setDate(baseDate.getDate() + (week * 7) + i);
@@ -722,7 +737,139 @@ function applyQuickWeekSchedule() {
     Promise.all(promises)
     .then(() => {
         closeModal('quickWeekModal');
-        showMessage('快速整周排班设置成功', 'success');
+        showMessage(`快速整周排班设置成功 (${repeatWeeks}周)`, 'success');
+        // 强制刷新本周视图
+        renderWeeklySchedule();
+    })
+    .catch(error => {
+        showMessage('设置失败: ' + error.message, 'error');
+    });
+}
+
+function showQuickScheduleForAll() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('quickAllDate').value = today;
+    document.getElementById('quickAllStart').value = '08:00';
+    document.getElementById('quickAllEnd').value = '17:00';
+    
+    // 重置工作日选择器
+    const container = document.getElementById('quickAllWeekdays');
+    if (container) {
+        container.querySelectorAll('.weekday-btn').forEach(btn => {
+            const day = parseInt(btn.dataset.day);
+            btn.classList.toggle('active', day >= 1 && day <= 5); // 周一到周五默认选中
+        });
+    }
+    
+    openModal('quickAllModal');
+}
+
+function applyQuickAllSchedule() {
+    const group = document.getElementById('quickAllGroup').value;
+    const startDate = document.getElementById('quickAllDate').value;
+    const startTime = document.getElementById('quickAllStart').value;
+    const endTime = document.getElementById('quickAllEnd').value;
+    
+    if (!startDate) {
+        showMessage('请选择开始日期', 'warning');
+        return;
+    }
+    
+    if (!startTime || !endTime) {
+        showMessage('请填写工作时间', 'warning');
+        return;
+    }
+    
+    if (startTime >= endTime) {
+        showMessage('结束时间必须晚于开始时间', 'warning');
+        return;
+    }
+    
+    const selectedDays = [];
+    document.querySelectorAll('#quickAllWeekdays .weekday-btn.active').forEach(btn => {
+        selectedDays.push(parseInt(btn.dataset.day));
+    });
+    
+    if (selectedDays.length === 0) {
+        showMessage('请至少选择一个工作日', 'warning');
+        return;
+    }
+    
+    let targetEmployees = [];
+    switch(group) {
+        case 'all':
+            targetEmployees = employees;
+            break;
+        case 'front':
+            targetEmployees = employees.filter(e => e.position === '前台/服务区');
+            break;
+        case 'kitchen':
+            targetEmployees = employees.filter(e => e.position === '厨房区');
+            break;
+    }
+    
+    if (targetEmployees.length === 0) {
+        showMessage('没有符合条件的员工', 'warning');
+        return;
+    }
+    
+    const baseDate = new Date(startDate);
+    const promises = [];
+    
+    // 为所有目标员工设置本周排班
+    targetEmployees.forEach(employee => {
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(baseDate);
+            date.setDate(baseDate.getDate() + i);
+            
+            // 跳过过去的日期
+            if (date < new Date()) continue;
+            
+            const dateString = date.toISOString().split('T')[0];
+            const dayOfWeek = date.getDay();
+            const isSelectedDay = selectedDays.includes(dayOfWeek);
+            
+            const scheduleData = {
+                employeeId: employee.id,
+                employeeName: employee.name,
+                employeePosition: employee.position,
+                date: dateString,
+                isDayOff: !isSelectedDay,
+                updatedAt: Date.now()
+            };
+            
+            if (isSelectedDay) {
+                scheduleData.startTime = startTime;
+                scheduleData.endTime = endTime;
+            } else {
+                scheduleData.startTime = '00:00';
+                scheduleData.endTime = '00:00';
+                scheduleData.notes = '休息日';
+            }
+            
+            const existingSchedule = findScheduleByEmployeeAndDate(employee.id, dateString);
+            
+            if (existingSchedule) {
+                // 更新现有排班
+                promises.push(
+                    database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
+                );
+            } else {
+                // 添加新排班
+                scheduleData.createdAt = Date.now();
+                promises.push(
+                    database.ref('schedules').push().set(scheduleData)
+                );
+            }
+        }
+    });
+    
+    Promise.all(promises)
+    .then(() => {
+        closeModal('quickAllModal');
+        showMessage(`已为 ${targetEmployees.length} 名员工设置排班`, 'success');
+        // 强制刷新本周视图
+        renderWeeklySchedule();
     })
     .catch(error => {
         showMessage('设置失败: ' + error.message, 'error');
@@ -892,6 +1039,29 @@ function editDaySchedule(employeeId, date) {
     openModal('editModal');
 }
 
+function editEmployeeSchedule() {
+    if (!selectedEmployee) return;
+    
+    // 切换到周视图
+    switchView('weekly');
+    closeModal('employeeModal');
+    
+    // 滚动到选中的员工
+    setTimeout(() => {
+        const employeeRow = document.querySelector(`.week-row .week-cell:first-child:contains("${employees.find(e => e.id === selectedEmployee)?.name}")`);
+        if (employeeRow) {
+            employeeRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 高亮显示
+            employeeRow.parentElement.style.background = 'var(--primary-light)';
+            setTimeout(() => {
+                if (employeeRow.parentElement) {
+                    employeeRow.parentElement.style.background = '';
+                }
+            }, 3000);
+        }
+    }, 300);
+}
+
 function setEditScheduleType(type) {
     const timeGroup = document.getElementById('editTimeGroup');
     const workBtn = document.querySelector('.type-btn:first-child');
@@ -953,6 +1123,8 @@ function saveDaySchedule(employeeId, date) {
         .then(() => {
             closeModal('editModal');
             showMessage('排班更新成功', 'success');
+            // 强制刷新本周视图
+            renderWeeklySchedule();
         })
         .catch(error => {
             showMessage('更新失败: ' + error.message, 'error');
@@ -965,6 +1137,8 @@ function saveDaySchedule(employeeId, date) {
         .then(() => {
             closeModal('editModal');
             showMessage('排班添加成功', 'success');
+            // 强制刷新本周视图
+            renderWeeklySchedule();
         })
         .catch(error => {
             showMessage('添加失败: ' + error.message, 'error');
@@ -982,6 +1156,8 @@ function deleteDaySchedule(employeeId, date) {
     .then(() => {
         closeModal('editModal');
         showMessage('排班已删除', 'success');
+        // 强制刷新本周视图
+        renderWeeklySchedule();
     })
     .catch(error => {
         showMessage('删除失败: ' + error.message, 'error');
@@ -1456,94 +1632,3 @@ function showMessage(text, type = 'info') {
         setTimeout(() => message.remove(), 300);
     }, 3000);
 }
-
-// 添加消息样式
-const messageStyle = document.createElement('style');
-messageStyle.textContent = `
-    .app-message {
-        position: fixed;
-        top: 100px;
-        left: 50%;
-        transform: translateX(-50%) translateY(-20px);
-        padding: 14px 24px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        z-index: 10000;
-        opacity: 0;
-        transition: all 0.3s ease;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        font-weight: 500;
-        max-width: 90%;
-        backdrop-filter: blur(10px);
-    }
-    .app-message.show {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-    .message-success {
-        background: rgba(46, 196, 182, 0.95);
-        color: white;
-        border: 1px solid rgba(46, 196, 182, 0.3);
-    }
-    .message-error {
-        background: rgba(247, 37, 133, 0.95);
-        color: white;
-        border: 1px solid rgba(247, 37, 133, 0.3);
-    }
-    .message-warning {
-        background: rgba(248, 150, 30, 0.95);
-        color: white;
-        border: 1px solid rgba(248, 150, 30, 0.3);
-    }
-    .message-info {
-        background: rgba(67, 97, 238, 0.95);
-        color: white;
-        border: 1px solid rgba(67, 97, 238, 0.3);
-    }
-    .app-message i {
-        font-size: 18px;
-    }
-`;
-document.head.appendChild(messageStyle);
-
-// 添加编辑表单样式
-const editFormStyle = document.createElement('style');
-editFormStyle.textContent = `
-    .edit-schedule-form {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-    }
-    .employee-display, .date-display {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        background: var(--light);
-        border-radius: var(--radius-sm);
-    }
-    .employee-avatar-small {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 16px;
-    }
-    .btn-danger {
-        background: linear-gradient(135deg, var(--danger), #b5179e);
-        color: white;
-        border: none;
-    }
-    .btn-danger:hover {
-        background: linear-gradient(135deg, #e63946, #f72585);
-        transform: translateY(-2px);
-    }
-`;
-document.head.appendChild(editFormStyle);
