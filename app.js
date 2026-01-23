@@ -1372,6 +1372,31 @@ function printSchedule() {
     const weeklyHours = calculateWeeklyHours(selectedEmployee);
     const monthlyHours = calculateMonthlyHours(selectedEmployee);
     
+    // 生成表格行内容
+    const tableRows = generateWeekDays(startDate).map(day => {
+        const schedule = weekSchedule.find(s => s.date === day.dateString);
+        const hours = schedule && !schedule.isDayOff ? 
+            calculateShiftHours(schedule.startTime, schedule.endTime) : 0;
+        
+        let scheduleTime = '-';
+        if (schedule && !schedule.isDayOff) {
+            scheduleTime = schedule.startTime.substring(0, 5) + ' - ' + schedule.endTime.substring(0, 5);
+        }
+        
+        const statusClass = schedule ? (schedule.isDayOff ? 'rest' : 'work') : '';
+        const statusText = schedule ? (schedule.isDayOff ? '休息' : '上班') : '无排班';
+        
+        return `
+            <tr class="${statusClass}">
+                <td>${day.name}</td>
+                <td>${formatDate(day.dateString)}</td>
+                <td>${statusText}</td>
+                <td>${scheduleTime}</td>
+                <td>${hours ? hours + 'h' : '-'}</td>
+            </tr>
+        `;
+    }).join('');
+    
     // 创建打印内容
     const printContent = `
         <!DOCTYPE html>
@@ -1429,22 +1454,7 @@ function printSchedule() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${generateWeekDays(startDate).map(day => {
-                        const schedule = weekSchedule.find(s => s.date === day.dateString);
-                        const hours = schedule && !schedule.isDayOff ? 
-                            calculateShiftHours(schedule.startTime, schedule.endTime) : 0;
-                        
-                        return `
-                            <tr class="${schedule ? (schedule.isDayOff ? 'rest' : 'work') : ''}">
-                                <td>${day.name}</td>
-                                <td>${formatDate(day.dateString)}</td>
-                                <td>${schedule ? (schedule.isDayOff ? '休息' : '上班') : '无排班'}</td>
-                                <td>${schedule ? (schedule.isDayOff ? '-' : 
-                                    '${schedule.startTime.substring(0, 5)} - ${schedule.endTime.substring(0, 5)}') : '-'}</td>
-                                <td>${hours ? hours + 'h' : '-'}</td>
-                            </tr>
-                        `;
-                    }).join('')}
+                    ${tableRows}
                 </tbody>
             </table>
             
