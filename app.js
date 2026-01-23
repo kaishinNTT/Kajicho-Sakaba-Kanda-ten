@@ -40,7 +40,68 @@ function initApp() {
     setInterval(updateCurrentDate, 60000);
 }
 
+function showQuickWeekModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('quickWeekDate').value = today;
+    document.getElementById('quickWeekStart').value = '08:00';
+    document.getElementById('quickWeekEnd').value = '17:00';
+    
+    // Cập nhật selector với ngày tháng
+    updateWeekdaysSelectorWithDates();
+    
+    updateQuickWeekEmployeeSelect();
+    openModal('quickWeekModal');
+}
+
+function updateWeekdaysSelectorWithDates() {
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    // Tính thứ 2 của tuần này
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    
+    const weekdays = [
+        { id: 1, label: '周一', default: true },
+        { id: 2, label: '周二', default: true },
+        { id: 3, label: '周三', default: true },
+        { id: 4, label: '周四', default: true },
+        { id: 5, label: '周五', default: true },
+        { id: 6, label: '周六', default: false },
+        { id: 0, label: '周日', default: false }
+    ];
+    
+    const container = document.getElementById('weekdaysSelector');
+    let html = '';
+    
+    weekdays.forEach((day, index) => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + index);
+        
+        const month = date.getMonth() + 1;
+        const dayNum = date.getDate();
+        
+        html += `
+            <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
+                    data-day="${day.id}" data-date="${date.toISOString().split('T')[0]}"
+                    onclick="toggleWeekday(this)">
+                <div style="font-weight: 500;">${day.label}</div>
+                <div style="font-size: 11px; color: var(--gray);">${month}/${dayNum}</div>
+            </button>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
 function initWeekdaysSelector() {
+    const today = new Date();
+    const currentDay = today.getDay();
+    
+    // Tính thứ 2 của tuần này
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+    
     const weekdays = [
         { id: 1, label: '周一', default: true },
         { id: 2, label: '周二', default: true },
@@ -54,12 +115,21 @@ function initWeekdaysSelector() {
     const container = document.getElementById('weekdaysSelector');
     const container2 = document.getElementById('smartWeekdays');
     
-    const weekdayHTML = weekdays.map(day => `
-        <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
-                data-day="${day.id}" onclick="toggleWeekday(this)">
-            ${day.label}
-        </button>
-    `).join('');
+    const weekdayHTML = weekdays.map((day, index) => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + index);
+        
+        const month = date.getMonth() + 1;
+        const dayNum = date.getDate();
+        
+        return `
+            <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
+                    data-day="${day.id}" onclick="toggleWeekday(this)">
+                <div style="font-weight: 500;">${day.label}</div>
+                <div style="font-size: 11px; color: var(--gray);">${month}/${dayNum}</div>
+            </button>
+        `;
+    }).join('');
     
     container.innerHTML = weekdayHTML;
     if (container2) container2.innerHTML = weekdayHTML;
@@ -856,36 +926,13 @@ function applySmartSchedule() {
 }
 
 // ==================== QUICK WEEK SCHEDULE ====================
-function showQuickWeekModal() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('quickWeekDate').value = today;
-    document.getElementById('quickWeekStart').value = '08:00';
-    document.getElementById('quickWeekEnd').value = '17:00';
-    
-    // 重置工作日选择器
-    document.querySelectorAll('#weekdaysSelector .weekday-btn').forEach(btn => {
-        const day = parseInt(btn.dataset.day);
-        btn.classList.toggle('active', day >= 1 && day <= 5); // 周一到周五默认选中
-    });
-    
-    updateQuickWeekEmployeeSelect();
-    openModal('quickWeekModal');
-}
-
 function applyQuickWeekSchedule() {
     const employeeId = document.getElementById('quickWeekEmployee').value;
-    const startDate = document.getElementById('quickWeekDate').value;
     const startTime = document.getElementById('quickWeekStart').value;
     const endTime = document.getElementById('quickWeekEnd').value;
-    const repeatWeeks = parseInt(document.getElementById('repeatWeeks').value);
     
     if (!employeeId) {
         showMessage('请选择员工', 'warning');
-        return;
-    }
-    
-    if (!startDate) {
-        showMessage('请选择开始日期', 'warning');
         return;
     }
     
@@ -900,8 +947,11 @@ function applyQuickWeekSchedule() {
     }
     
     const selectedDays = [];
+    const selectedDates = [];
+    
     document.querySelectorAll('#weekdaysSelector .weekday-btn.active').forEach(btn => {
         selectedDays.push(parseInt(btn.dataset.day));
+        selectedDates.push(btn.dataset.date);
     });
     
     if (selectedDays.length === 0) {
@@ -912,61 +962,41 @@ function applyQuickWeekSchedule() {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
     
-    const baseDate = new Date(startDate);
     const promises = [];
     
-    // 为指定周数设置排班
-    for (let week = 0; week < repeatWeeks; week++) {
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(baseDate);
-            date.setDate(baseDate.getDate() + (week * 7) + i);
-            
-            // 跳过过去的日期
-            if (date < new Date()) continue;
-            
-            const dateString = date.toISOString().split('T')[0];
-            const dayOfWeek = date.getDay();
-            const isSelectedDay = selectedDays.includes(dayOfWeek);
-            
-            const scheduleData = {
-                employeeId: employeeId,
-                employeeName: employee.name,
-                employeePosition: employee.position,
-                date: dateString,
-                isDayOff: !isSelectedDay,
-                updatedAt: Date.now()
-            };
-            
-            if (isSelectedDay) {
-                scheduleData.startTime = startTime;
-                scheduleData.endTime = endTime;
-            } else {
-                scheduleData.startTime = '00:00';
-                scheduleData.endTime = '00:00';
-                scheduleData.notes = '休息日';
-            }
-            
-            const existingSchedule = findScheduleByEmployeeAndDate(employeeId, dateString);
-            
-            if (existingSchedule) {
-                // 更新现有排班
-                promises.push(
-                    database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
-                );
-            } else {
-                // 添加新排班
-                scheduleData.createdAt = Date.now();
-                promises.push(
-                    database.ref('schedules').push().set(scheduleData)
-                );
-            }
+    // 为选择的日期设置排班
+    selectedDates.forEach(dateString => {
+        const scheduleData = {
+            employeeId: employeeId,
+            employeeName: employee.name,
+            employeePosition: employee.position,
+            date: dateString,
+            isDayOff: false,
+            startTime: startTime,
+            endTime: endTime,
+            updatedAt: Date.now()
+        };
+        
+        const existingSchedule = findScheduleByEmployeeAndDate(employeeId, dateString);
+        
+        if (existingSchedule) {
+            // 更新现有排班
+            promises.push(
+                database.ref(`schedules/${existingSchedule.id}`).update(scheduleData)
+            );
+        } else {
+            // 添加新排班
+            scheduleData.createdAt = Date.now();
+            promises.push(
+                database.ref('schedules').push().set(scheduleData)
+            );
         }
-    }
+    });
     
     Promise.all(promises)
     .then(() => {
         closeModal('quickWeekModal');
-        showMessage(`快速整周排班设置成功 (${repeatWeeks}周)`, 'success');
+        showMessage(`已为 ${selectedDays.length} 天设置排班`, 'success');
         // 强制刷新本周视图
         renderWeeklySchedule();
     })
