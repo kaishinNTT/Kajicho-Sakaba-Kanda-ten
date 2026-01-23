@@ -2411,3 +2411,137 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
 // ==================== INITIAL LOAD ====================
 // Khởi động ứng dụng
 console.log("✅ Kajicho Kanda 排班系统已完全加载");
+
+// Thêm vào cuối file app.js:
+
+// ==================== ENHANCED UX FEATURES ====================
+
+// Double-tap to zoom prevention for iPad
+document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (e.target.classList.contains('day-schedule-item') || 
+        e.target.classList.contains('employee-card')) {
+        if (now - (this.lastTouchEnd || 0) < 300) {
+            e.preventDefault();
+            e.target.click();
+        }
+        this.lastTouchEnd = now;
+    }
+}, false);
+
+// Better keyboard navigation for desktop
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const openModal = document.querySelector('.modal[style*="display: flex"]');
+        if (openModal) {
+            closeModal(openModal.id);
+        }
+    }
+    
+    // Tab navigation trong modal
+    if (e.key === 'Tab' && e.target.classList.contains('modal-content')) {
+        e.preventDefault();
+        const focusable = document.querySelectorAll('.modal-content input, .modal-content select, .modal-content button:not(.modal-close)');
+        const currentIndex = Array.from(focusable).indexOf(document.activeElement);
+        let nextIndex;
+        
+        if (e.shiftKey) {
+            nextIndex = currentIndex > 0 ? currentIndex - 1 : focusable.length - 1;
+        } else {
+            nextIndex = currentIndex < focusable.length - 1 ? currentIndex + 1 : 0;
+        }
+        
+        focusable[nextIndex].focus();
+    }
+});
+
+// Auto-focus improvements
+function enhanceAutoFocus() {
+    // Auto-focus vào search khi vào employee view
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.nav-btn[data-view="employees"]')) {
+            setTimeout(() => {
+                const searchInput = document.getElementById('employeeSearch');
+                if (searchInput) searchInput.focus();
+            }, 300);
+        }
+    });
+    
+    // Auto-focus vào name input khi mở add employee modal
+    document.getElementById('addEmployeeModal')?.addEventListener('shown', function() {
+        const nameInput = document.getElementById('newEmployeeName');
+        if (nameInput) {
+            setTimeout(() => nameInput.focus(), 100);
+        }
+    });
+}
+
+// Gọi các hàm enhance
+document.addEventListener('DOMContentLoaded', function() {
+    enhanceAutoFocus();
+    
+    // Thêm loading indicator
+    document.body.insertAdjacentHTML('beforeend', `
+        <div id="global-loader" style="
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        ">
+            <div style="
+                width: 50px;
+                height: 50px;
+                border: 3px solid var(--primary-light);
+                border-top-color: var(--primary);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            "></div>
+            <p style="margin-top: 20px; color: var(--primary); font-weight: 600;">加载中...</p>
+        </div>
+    `);
+    
+    // Thêm animation cho spinner
+    const spinStyle = document.createElement('style');
+    spinStyle.textContent = `
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(spinStyle);
+});
+
+// Hàm loading helper
+function showLoader(show = true) {
+    const loader = document.getElementById('global-loader');
+    if (loader) {
+        loader.style.display = show ? 'flex' : 'none';
+    }
+}
+
+// Optimize Firebase operations cho mạng chậm
+function optimizeFirebaseCalls() {
+    // Debounce schedule updates
+    let scheduleUpdateTimeout;
+    const originalRender = renderWeeklySchedule;
+    renderWeeklySchedule = function() {
+        clearTimeout(scheduleUpdateTimeout);
+        scheduleUpdateTimeout = setTimeout(() => {
+            originalRender.call(this);
+        }, 300);
+    };
+    
+    // Cache employees locally
+    if (!localStorage.getItem('employees_cache')) {
+        setTimeout(() => {
+            localStorage.setItem('employees_cache', JSON.stringify(employees));
+        }, 5000);
+    }
+}
+
+// Gọi optimization
+optimizeFirebaseCalls();
