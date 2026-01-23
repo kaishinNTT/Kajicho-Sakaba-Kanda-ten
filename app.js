@@ -1726,6 +1726,315 @@ function refreshData() {
     showMessage('数据已刷新', 'success');
 }
 
+// ==================== PRINT ALL SCHEDULE ====================
+function printAllSchedule() {
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedule = getWeekSchedules(startDate, endDate);
+    const days = generateWeekDays(startDate);
+    
+    // Tạo HTML để in
+    let printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>本周排班表 - ${formatDate(startDate)} 至 ${formatDate(endDate)}</title>
+            <meta charset="UTF-8">
+            <style>
+                body { 
+                    font-family: 'Microsoft YaHei', sans-serif; 
+                    padding: 20px; 
+                    color: #333;
+                    font-size: 14px;
+                }
+                .print-header { 
+                    text-align: center; 
+                    margin-bottom: 30px; 
+                    padding-bottom: 20px; 
+                    border-bottom: 2px solid #4361ee; 
+                }
+                .print-header h1 { 
+                    color: #4361ee; 
+                    margin: 0 0 10px 0; 
+                    font-size: 24px;
+                }
+                .print-info {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 20px;
+                    padding: 15px;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                }
+                .info-item {
+                    text-align: center;
+                }
+                .info-item h3 {
+                    color: #666;
+                    font-size: 12px;
+                    margin: 0 0 5px 0;
+                }
+                .info-item p {
+                    color: #4361ee;
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin: 0;
+                }
+                .schedule-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-bottom: 30px;
+                    font-size: 13px;
+                }
+                .schedule-table th { 
+                    background: #4361ee; 
+                    color: white; 
+                    padding: 12px 8px; 
+                    text-align: center; 
+                    border: 1px solid #ddd;
+                    font-weight: 500;
+                }
+                .schedule-table td { 
+                    padding: 10px 8px; 
+                    border: 1px solid #ddd; 
+                    text-align: center;
+                    vertical-align: top;
+                    min-height: 60px;
+                }
+                .schedule-table .work { 
+                    background: #e8f5e9; 
+                }
+                .schedule-table .rest { 
+                    background: #fff3e0; 
+                }
+                .employee-name {
+                    font-weight: 600;
+                    font-size: 14px;
+                }
+                .employee-position {
+                    font-size: 12px;
+                    color: #666;
+                }
+                .schedule-time {
+                    font-size: 12px;
+                    font-weight: 500;
+                    margin: 3px 0;
+                }
+                .schedule-rest {
+                    font-size: 12px;
+                    color: #f8961e;
+                    font-weight: 500;
+                }
+                .day-header {
+                    background: #f1f5f9;
+                    padding: 8px;
+                    border-bottom: 2px solid #4361ee;
+                }
+                .day-name {
+                    font-weight: 600;
+                    font-size: 14px;
+                }
+                .day-date {
+                    font-size: 12px;
+                    color: #666;
+                }
+                .summary-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 15px;
+                    margin-top: 30px;
+                }
+                .summary-card {
+                    background: #eef2ff;
+                    padding: 15px;
+                    border-radius: 8px;
+                    text-align: center;
+                }
+                .summary-card h4 {
+                    color: #4361ee;
+                    font-size: 20px;
+                    margin: 0 0 5px 0;
+                }
+                .summary-card p {
+                    color: #666;
+                    font-size: 12px;
+                    margin: 0;
+                }
+                .footer { 
+                    text-align: center; 
+                    margin-top: 30px; 
+                    color: #666; 
+                    font-size: 12px; 
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                }
+                @media print {
+                    body { padding: 10px; }
+                    @page { 
+                        margin: 0.5cm;
+                        size: landscape;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <h1>本周排班表</h1>
+                <p>日期：${formatDate(startDate)} 至 ${formatDate(endDate)}</p>
+            </div>
+            
+            <div class="print-info">
+                <div class="info-item">
+                    <h3>总员工数</h3>
+                    <p>${employees.length} 人</p>
+                </div>
+                <div class="info-item">
+                    <h3>本周总排班</h3>
+                    <p>${weekSchedule.length} 班次</p>
+                </div>
+                <div class="info-item">
+                    <h3>前台/服务区</h3>
+                    <p>${employees.filter(e => e.position === '前台/服务区').length} 人</p>
+                </div>
+                <div class="info-item">
+                    <h3>厨房区</h3>
+                    <p>${employees.filter(e => e.position === '厨房区').length} 人</p>
+                </div>
+            </div>
+            
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">员工 / 职位</th>
+    `;
+    
+    // Thêm ngày tháng cho mỗi ngày
+    days.forEach(day => {
+        const date = new Date(day.dateString);
+        const month = date.getMonth() + 1;
+        const dayNum = date.getDate();
+        printContent += `
+            <th>
+                <div class="day-header">
+                    <div class="day-name">${day.name}</div>
+                    <div class="day-date">${month}/${dayNum}</div>
+                </div>
+            </th>
+        `;
+    });
+    
+    printContent += `
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    // Nhóm lịch trình theo nhân viên
+    const schedulesByEmployee = {};
+    weekSchedule.forEach(schedule => {
+        if (!schedulesByEmployee[schedule.employeeId]) {
+            schedulesByEmployee[schedule.employeeId] = {};
+        }
+        schedulesByEmployee[schedule.employeeId][schedule.date] = schedule;
+    });
+    
+    // Thêm dữ liệu cho mỗi nhân viên
+    employees.forEach(employee => {
+        const employeeSchedules = schedulesByEmployee[employee.id] || {};
+        const weeklyHours = calculateWeeklyHours(employee.id);
+        
+        printContent += `
+            <tr>
+                <td style="text-align: left; padding-left: 12px;">
+                    <div class="employee-name">${employee.name}</div>
+                    <div class="employee-position">${employee.position}</div>
+                    <div style="font-size: 11px; color: #4361ee; margin-top: 5px;">
+                        本周工时: ${weeklyHours}h
+                    </div>
+                </td>
+        `;
+        
+        days.forEach(day => {
+            const schedule = employeeSchedules[day.dateString];
+            let scheduleClass = '';
+            let scheduleContent = '';
+            
+            if (schedule) {
+                if (schedule.isDayOff) {
+                    scheduleClass = 'rest';
+                    scheduleContent = '<div class="schedule-rest">休息</div>';
+                } else {
+                    scheduleClass = 'work';
+                    const hours = calculateShiftHours(schedule.startTime, schedule.endTime);
+                    scheduleContent = `
+                        <div class="schedule-time">${schedule.startTime.substring(0, 5)}-${schedule.endTime.substring(0, 5)}</div>
+                        <div style="font-size: 11px; color: #666;">${hours}h</div>
+                    `;
+                }
+            } else {
+                scheduleContent = '<div style="color: #999; font-size: 12px;">-</div>';
+            }
+            
+            printContent += `
+                <td class="${scheduleClass}">
+                    ${scheduleContent}
+                </td>
+            `;
+        });
+        
+        printContent += `</tr>`;
+    });
+    
+    // Tính tổng kết
+    const totalWorkHours = employees.reduce((sum, emp) => sum + calculateWeeklyHours(emp.id), 0);
+    const totalWorkDays = weekSchedule.filter(s => !s.isDayOff).length;
+    const totalRestDays = weekSchedule.filter(s => s.isDayOff).length;
+    
+    printContent += `
+                </tbody>
+            </table>
+            
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h4>${totalWorkHours}</h4>
+                    <p>本周总工时</p>
+                </div>
+                <div class="summary-card">
+                    <h4>${employees.length}</h4>
+                    <p>员工总数</p>
+                </div>
+                <div class="summary-card">
+                    <h4>${totalWorkDays}</h4>
+                    <p>工作班次</p>
+                </div>
+                <div class="summary-card">
+                    <h4>${totalRestDays}</h4>
+                    <p>休息班次</p>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>生成时间：${new Date().toLocaleString('zh-CN')}</p>
+                <p>智能排班系统 - 按 Ctrl + P 打印</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Mở cửa sổ in
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    setTimeout(() => {
+        printWindow.print();
+        setTimeout(() => {
+            printWindow.close();
+        }, 500);
+    }, 500);
+    
+    showMessage('正在打开本周排班表打印预览...', 'info');
+}
+
 function showMessage(text, type = 'info') {
     // 移除现有消息
     const existingMessage = document.querySelector('.app-message');
