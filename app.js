@@ -201,8 +201,9 @@ function validateTimeRange(startTime, endTime) {
 }
 
 // ==================== 计算工时函数（已修复跨午夜问题） ====================
+// ==================== 计算工时函数（已修复跨午夜问题） ====================
 function calculateShiftHours(startTime, endTime) {
-    if (!startTime || !endTime || startTime === '00:00' || endTime === '00:00') {
+    if (!startTime || !endTime) {
         return 0;
     }
     
@@ -218,8 +219,9 @@ function calculateShiftHours(startTime, endTime) {
     
     // 判断是否跨午夜
     let workMinutes;
-    if (endTotalMinutes < startTotalMinutes) {
+    if (endTotalMinutes <= startTotalMinutes) {
         // 跨午夜：从开始时间到午夜 + 从午夜到结束时间
+        // 注意：修改 <= để xử lý trường hợp 00:00
         workMinutes = (24 * 60 - startTotalMinutes) + endTotalMinutes;
     } else {
         // 不跨午夜
