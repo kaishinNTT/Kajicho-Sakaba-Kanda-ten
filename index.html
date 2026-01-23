@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Kajicho Kanda 排班系统</title>
+    <title>Kajicho Kanda - Quản lý lịch làm việc</title>
     <link rel="stylesheet" href="style.css">
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -15,8 +15,46 @@
     <!-- Apple Touch Icon -->
     <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+    <style>
+        /* Thêm loading screen */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <h2>Đang tải ứng dụng...</h2>
+        <p style="margin-top: 10px; opacity: 0.8;">Kajicho Kanda Schedule</p>
+    </div>
+
     <!-- Main App -->
     <div class="app">
         <!-- Header -->
@@ -25,7 +63,7 @@
                 <h1><i class="fas fa-calendar-alt"></i> Kajicho Kanda</h1>
                 <div class="connection-status" id="connectionStatus">
                     <i class="fas fa-wifi"></i>
-                    <span>已连接</span>
+                    <span>Đã kết nối</span>
                 </div>
             </div>
             <div class="current-date" id="currentDate"></div>
@@ -35,15 +73,15 @@
         <nav class="main-nav">
             <button class="nav-btn active" data-view="employees" onclick="switchView('employees')">
                 <i class="fas fa-users"></i>
-                <span>员工</span>
+                <span>Nhân viên</span>
             </button>
             <button class="nav-btn" data-view="weekly" onclick="switchView('weekly')">
                 <i class="fas fa-calendar-week"></i>
-                <span>本周</span>
+                <span>Tuần này</span>
             </button>
             <button class="nav-btn" data-view="schedule" onclick="switchView('schedule')">
                 <i class="fas fa-plus-circle"></i>
-                <span>排班</span>
+                <span>Xếp lịch</span>
             </button>
         </nav>
 
@@ -52,12 +90,12 @@
             <!-- EMPLOYEES VIEW -->
             <div class="view active" id="employeesView">
                 <div class="view-header">
-                    <h2><i class="fas fa-users"></i> 员工管理</h2>
+                    <h2><i class="fas fa-users"></i> Quản lý nhân viên</h2>
                     <div class="view-actions">
-                        <button class="btn-icon" onclick="showAddEmployee()" title="添加员工">
+                        <button class="btn-icon" onclick="showAddEmployee()" title="Thêm nhân viên">
                             <i class="fas fa-user-plus"></i>
                         </button>
-                        <button class="btn-icon" onclick="refreshData()" title="刷新数据">
+                        <button class="btn-icon" onclick="refreshData()" title="Làm mới dữ liệu">
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
@@ -65,30 +103,30 @@
 
                 <div class="search-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="employeeSearch" placeholder="搜索员工..." oninput="searchEmployees()">
+                    <input type="text" id="employeeSearch" placeholder="Tìm nhân viên..." oninput="searchEmployees()">
                 </div>
 
                 <div class="position-filter">
-                    <button class="filter-btn active" onclick="filterEmployees('all')">全部</button>
-                    <button class="filter-btn" onclick="filterEmployees('前台/服务区')">前台/服务区</button>
-                    <button class="filter-btn" onclick="filterEmployees('厨房区')">厨房区</button>
+                    <button class="filter-btn active" onclick="filterEmployees('all')">Tất cả</button>
+                    <button class="filter-btn" onclick="filterEmployees('前台/服务区')">Quầy/Dịch vụ</button>
+                    <button class="filter-btn" onclick="filterEmployees('厨房区')">Bếp</button>
                 </div>
 
                 <div class="employee-cards" id="employeeCards">
-                    <!-- 员工卡片 -->
+                    <!-- Thẻ nhân viên sẽ được thêm vào đây -->
                 </div>
             </div>
 
             <!-- WEEKLY SCHEDULE VIEW -->
             <div class="view" id="weeklyView">
                 <div class="view-header">
-                    <h2><i class="fas fa-calendar-week"></i> 本周排班</h2>
+                    <h2><i class="fas fa-calendar-week"></i> Lịch tuần này</h2>
                     <div class="week-nav">
-                        <button class="btn-icon" onclick="changeWeek(-1)" title="上周">
+                        <button class="btn-icon" onclick="changeWeek(-1)" title="Tuần trước">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <span id="weekRange">本周</span>
-                        <button class="btn-icon" onclick="changeWeek(1)" title="下周">
+                        <span id="weekRange">Tuần này</span>
+                        <button class="btn-icon" onclick="changeWeek(1)" title="Tuần sau">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                     </div>
@@ -96,7 +134,7 @@
 
                 <div class="weekly-schedule-container">
                     <div class="weekly-schedule" id="weeklySchedule">
-                        <!-- 周排班表 -->
+                        <!-- Lịch tuần sẽ được thêm vào đây -->
                     </div>
                 </div>
             </div>
@@ -104,60 +142,60 @@
             <!-- SCHEDULE VIEW -->
             <div class="view" id="scheduleView">
                 <div class="view-header">
-                    <h2><i class="fas fa-plus-circle"></i> 添加排班</h2>
+                    <h2><i class="fas fa-plus-circle"></i> Thêm lịch làm việc</h2>
                 </div>
 
                 <div class="schedule-form">
                     <div class="form-group">
-                        <label><i class="fas fa-user"></i> 选择员工</label>
+                        <label><i class="fas fa-user"></i> Chọn nhân viên</label>
                         <select id="scheduleEmployee" class="select-input">
-                            <option value="">选择员工</option>
+                            <option value="">Chọn nhân viên</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-calendar"></i> 日期</label>
+                        <label><i class="fas fa-calendar"></i> Ngày</label>
                         <input type="date" id="scheduleDate" class="input-field">
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-clock"></i> 工作时间段</label>
+                        <label><i class="fas fa-clock"></i> Thời gian làm việc</label>
                         <div class="time-range-group">
                             <div class="time-range-inputs">
                                 <input type="time" id="scheduleStart" class="input-field" value="12:00">
-                                <span class="time-separator">至</span>
+                                <span class="time-separator">đến</span>
                                 <input type="time" id="scheduleEnd" class="input-field" value="00:00">
                             </div>
                             <div class="quick-time-buttons">
-                                <button class="time-preset" onclick="setTimePreset('12:00', '00:00')">全天</button>
-                                <button class="time-preset" onclick="setTimePreset('18:00', '00:00')">晚上</button>
+                                <button type="button" class="time-preset" onclick="setTimePreset('12:00', '00:00')">Cả ngày</button>
+                                <button type="button" class="time-preset" onclick="setTimePreset('18:00', '00:00')">Tối</button>
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label><i class="fas fa-tag"></i> 类型</label>
+                        <label><i class="fas fa-tag"></i> Loại</label>
                         <div class="type-selector">
-                            <button class="type-btn active" data-type="work" onclick="selectScheduleType('work')">
+                            <button type="button" class="type-btn active" data-type="work" onclick="selectScheduleType('work')">
                                 <i class="fas fa-briefcase"></i>
-                                <span>上班</span>
+                                <span>Làm việc</span>
                             </button>
-                            <button class="type-btn" data-type="rest" onclick="selectScheduleType('rest')">
+                            <button type="button" class="type-btn" data-type="rest" onclick="selectScheduleType('rest')">
                                 <i class="fas fa-umbrella-beach"></i>
-                                <span>休息</span>
+                                <span>Nghỉ</span>
                             </button>
                         </div>
                     </div>
 
                     <div class="action-buttons">
-                        <button class="btn-primary" onclick="addSchedule()">
-                            <i class="fas fa-check"></i> 添加排班
+                        <button type="button" class="btn-primary" onclick="addSchedule()">
+                            <i class="fas fa-check"></i> Thêm lịch
                         </button>
-                        <button class="btn-secondary" onclick="showQuickWeekModal()">
-                            <i class="fas fa-calendar-week"></i> 快速整周
+                        <button type="button" class="btn-secondary" onclick="showQuickWeekModal()">
+                            <i class="fas fa-calendar-week"></i> Xếp cả tuần
                         </button>
-                        <button class="btn-secondary btn-rest-day" onclick="showSetRestDaysModal()">
-                            <i class="fas fa-umbrella-beach"></i> 设置休息日
+                        <button type="button" class="btn-secondary btn-rest-day" onclick="showSetRestDaysModal()">
+                            <i class="fas fa-umbrella-beach"></i> Đặt ngày nghỉ
                         </button>
                     </div>
                 </div>
@@ -166,17 +204,17 @@
 
         <!-- Quick Actions Bar -->
         <div class="quick-actions-bar">
-            <button class="quick-action" onclick="showTodaySchedule()">
+            <button type="button" class="quick-action" onclick="showTodaySchedule()">
                 <i class="fas fa-calendar-day"></i>
-                <span>今日</span>
+                <span>Hôm nay</span>
             </button>
-            <button class="quick-action" onclick="showStats()">
+            <button type="button" class="quick-action" onclick="showStats()">
                 <i class="fas fa-chart-bar"></i>
-                <span>统计</span>
+                <span>Thống kê</span>
             </button>
-            <button class="quick-action" onclick="printAllSchedule()">
+            <button type="button" class="quick-action" onclick="printAllSchedule()">
                 <i class="fas fa-print"></i>
-                <span>打印本周</span>
+                <span>In tuần</span>
             </button>
         </div>
     </div>
@@ -187,7 +225,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modalEmployeeName"></h3>
-                <button class="modal-close" onclick="closeModal('employeeModal')">
+                <button type="button" class="modal-close" onclick="closeModal('employeeModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -195,42 +233,42 @@
                 <div class="employee-detail-info">
                     <div class="employee-basic">
                         <div class="info-row">
-                            <span class="label">职位</span>
+                            <span class="label">Chức vụ</span>
                             <span class="value" id="modalEmployeePosition"></span>
                         </div>
                         <div class="info-row">
-                            <span class="label">本周工时</span>
-                            <span class="value" id="modalWeekHours">0 小时</span>
+                            <span class="label">Giờ tuần này</span>
+                            <span class="value" id="modalWeekHours">0 giờ</span>
                         </div>
                         <div class="info-row">
-                            <span class="label">本月工时</span>
-                            <span class="value" id="modalMonthHours">0 小时</span>
+                            <span class="label">Giờ tháng này</span>
+                            <span class="value" id="modalMonthHours">0 giờ</span>
                         </div>
                     </div>
 
                     <div class="week-summary">
-                        <h4><i class="fas fa-calendar-week"></i> 本周排班</h4>
+                        <h4><i class="fas fa-calendar-week"></i> Lịch tuần này</h4>
                         <div class="week-days" id="employeeWeekDays">
-                            <!-- 周排班日视图 -->
+                            <!-- Weekly schedule view -->
                         </div>
                     </div>
 
                     <div class="modal-actions">
-                        <button class="btn-action" onclick="editEmployeeSchedule()">
-                            <i class="fas fa-edit"></i> 编辑排班
+                        <button type="button" class="btn-action" onclick="editEmployeeSchedule()">
+                            <i class="fas fa-edit"></i> Sửa lịch
                         </button>
                         
                         <div class="split-buttons">
-                            <button class="btn-action" onclick="copyEmployeeSchedule()">
-                                <i class="fas fa-copy"></i> 复制文本
+                            <button type="button" class="btn-action" onclick="copyEmployeeSchedule()">
+                                <i class="fas fa-copy"></i> Sao chép
                             </button>
-                            <button class="btn-action" onclick="printEmployeeSchedule()">
-                                <i class="fas fa-print"></i> 打印排班
+                            <button type="button" class="btn-action" onclick="printEmployeeSchedule()">
+                                <i class="fas fa-print"></i> In lịch
                             </button>
                         </div>
                         
-                        <button class="btn-action btn-danger" onclick="deleteCurrentEmployee()">
-                            <i class="fas fa-trash"></i> 删除员工
+                        <button type="button" class="btn-action btn-danger" onclick="deleteCurrentEmployee()">
+                            <i class="fas fa-trash"></i> Xóa nhân viên
                         </button>
                     </div>
                 </div>
@@ -242,30 +280,30 @@
     <div class="modal" id="addEmployeeModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-user-plus"></i> 添加员工</h3>
-                <button class="modal-close" onclick="closeModal('addEmployeeModal')">
+                <h3><i class="fas fa-user-plus"></i> Thêm nhân viên</h3>
+                <button type="button" class="modal-close" onclick="closeModal('addEmployeeModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <input type="text" id="newEmployeeName" class="input-field" placeholder="请输入员工姓名" autofocus>
+                    <input type="text" id="newEmployeeName" class="input-field" placeholder="Nhập tên nhân viên" autofocus>
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-briefcase"></i> 职位</label>
+                    <label><i class="fas fa-briefcase"></i> Chức vụ</label>
                     <div class="position-select">
-                        <button class="position-option active" data-position="前台/服务区" onclick="selectPosition(this)">
+                        <button type="button" class="position-option active" data-position="前台/服务区" onclick="selectPosition(this)">
                             <i class="fas fa-door-open"></i>
-                            <span>前台/服务区</span>
+                            <span>Quầy/Dịch vụ</span>
                         </button>
-                        <button class="position-option" data-position="厨房区" onclick="selectPosition(this)">
+                        <button type="button" class="position-option" data-position="厨房区" onclick="selectPosition(this)">
                             <i class="fas fa-utensils"></i>
-                            <span>厨房区</span>
+                            <span>Bếp</span>
                         </button>
                     </div>
                 </div>
-                <button class="btn-primary full-width" onclick="addEmployee()">
-                    <i class="fas fa-plus"></i> 添加员工
+                <button type="button" class="btn-primary full-width" onclick="addEmployee()">
+                    <i class="fas fa-plus"></i> Thêm nhân viên
                 </button>
             </div>
         </div>
@@ -275,50 +313,50 @@
     <div class="modal" id="quickWeekModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-calendar-week"></i> 快速整周排班</h3>
-                <button class="modal-close" onclick="closeModal('quickWeekModal')">
+                <h3><i class="fas fa-calendar-week"></i> Xếp lịch cả tuần</h3>
+                <button type="button" class="modal-close" onclick="closeModal('quickWeekModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="quick-week-options">
                     <div class="form-group">
-                        <label><i class="fas fa-user"></i> 选择员工</label>
+                        <label><i class="fas fa-user"></i> Chọn nhân viên</label>
                         <select id="quickWeekEmployee" class="select-input">
-                            <option value="">选择员工</option>
+                            <option value="">Chọn nhân viên</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-clock"></i> 工作时间</label>
+                        <label><i class="fas fa-clock"></i> Giờ làm việc</label>
                         <div class="time-group">
                             <input type="time" id="quickWeekStart" class="input-field" value="08:00">
-                            <span class="time-separator">至</span>
+                            <span class="time-separator">đến</span>
                             <input type="time" id="quickWeekEnd" class="input-field" value="17:00">
                         </div>
                         <div class="quick-time-buttons">
-                            <button class="time-preset" onclick="setQuickTimePreset('08:00', '17:00')">早班</button>
-                            <button class="time-preset" onclick="setQuickTimePreset('12:00', '21:00')">晚班</button>
-                            <button class="time-preset" onclick="setQuickTimePreset('09:00', '18:00')">全天</button>
+                            <button type="button" class="time-preset" onclick="setQuickTimePreset('08:00', '17:00')">Sáng</button>
+                            <button type="button" class="time-preset" onclick="setQuickTimePreset('12:00', '21:00')">Chiều</button>
+                            <button type="button" class="time-preset" onclick="setQuickTimePreset('09:00', '18:00')">Cả ngày</button>
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> 设置工作日</label>
+                        <label><i class="fas fa-calendar-check"></i> Đặt ngày làm việc</label>
                         <div class="weekdays-selector" id="weekdaysSelector">
-                            <!-- 工作日选择器 -->
+                            <!-- Weekday selector -->
                         </div>
                         <div class="quick-day-buttons">
-                            <button class="day-preset" onclick="setAllWeekdays()">全选工作日</button>
-                            <button class="day-preset" onclick="setAllAsRest()">全设为休息</button>
-                            <button class="day-preset" onclick="clearWeekdays()">清除所有</button>
+                            <button type="button" class="day-preset" onclick="setAllWeekdays()">Chọn tất cả</button>
+                            <button type="button" class="day-preset" onclick="setAllAsRest()">Tất cả nghỉ</button>
+                            <button type="button" class="day-preset" onclick="clearWeekdays()">Bỏ chọn</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="modal-actions">
-                    <button class="btn-primary" onclick="applyQuickWeekSchedule()">
-                        <i class="fas fa-check"></i> 应用排班
+                    <button type="button" class="btn-primary" onclick="applyQuickWeekSchedule()">
+                        <i class="fas fa-check"></i> Áp dụng lịch
                     </button>
                 </div>
             </div>
@@ -329,35 +367,35 @@
     <div class="modal" id="setRestDaysModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-umbrella-beach"></i> 设置休息日</h3>
-                <button class="modal-close" onclick="closeModal('setRestDaysModal')">
+                <h3><i class="fas fa-umbrella-beach"></i> Đặt ngày nghỉ</h3>
+                <button type="button" class="modal-close" onclick="closeModal('setRestDaysModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="rest-days-options">
                     <div class="form-group">
-                        <label><i class="fas fa-user"></i> 选择员工</label>
+                        <label><i class="fas fa-user"></i> Chọn nhân viên</label>
                         <select id="restDaysEmployee" class="select-input">
-                            <option value="">选择员工</option>
+                            <option value="">Chọn nhân viên</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> 选择休息日</label>
+                        <label><i class="fas fa-calendar-check"></i> Chọn ngày nghỉ</label>
                         <div class="weekdays-selector" id="restDaysSelector">
-                            <!-- 休息日选择器 -->
+                            <!-- Rest days selector -->
                         </div>
                         <div class="quick-day-buttons">
-                            <button class="day-preset" onclick="setAllRestDays()">全设为休息</button>
-                            <button class="day-preset" onclick="clearRestDays()">清除所有</button>
+                            <button type="button" class="day-preset" onclick="setAllRestDays()">Tất cả nghỉ</button>
+                            <button type="button" class="day-preset" onclick="clearRestDays()">Bỏ chọn</button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="modal-actions">
-                    <button class="btn-primary" onclick="applyRestDays()">
-                        <i class="fas fa-umbrella-beach"></i> 应用休息日
+                    <button type="button" class="btn-primary" onclick="applyRestDays()">
+                        <i class="fas fa-umbrella-beach"></i> Áp dụng ngày nghỉ
                     </button>
                 </div>
             </div>
@@ -368,14 +406,14 @@
     <div class="modal" id="todayModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-calendar-day"></i> 今日排班</h3>
-                <button class="modal-close" onclick="closeModal('todayModal')">
+                <h3><i class="fas fa-calendar-day"></i> Lịch hôm nay</h3>
+                <button type="button" class="modal-close" onclick="closeModal('todayModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="today-list" id="todayList">
-                    <!-- 今日排班列表 -->
+                    <!-- Today's schedule list -->
                 </div>
             </div>
         </div>
@@ -385,14 +423,14 @@
     <div class="modal" id="statsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-chart-bar"></i> 工时统计</h3>
-                <button class="modal-close" onclick="closeModal('statsModal')">
+                <h3><i class="fas fa-chart-bar"></i> Thống kê giờ làm</h3>
+                <button type="button" class="modal-close" onclick="closeModal('statsModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="stats-grid" id="statsGrid">
-                    <!-- 统计信息 -->
+                    <!-- Stats information -->
                 </div>
             </div>
         </div>
@@ -402,14 +440,14 @@
     <div class="modal" id="editModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-edit"></i> 编辑排班</h3>
-                <button class="modal-close" onclick="closeModal('editModal')">
+                <h3><i class="fas fa-edit"></i> Sửa lịch</h3>
+                <button type="button" class="modal-close" onclick="closeModal('editModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div id="editScheduleContent">
-                    <!-- 编辑排班内容 -->
+                    <!-- Edit schedule content -->
                 </div>
             </div>
         </div>
@@ -427,19 +465,33 @@
             appId: "1:377051530021:web:e3341a1a7bcdc89ad810cc"
         };
         
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const database = firebase.database();
+            
+            // Kiểm tra kết nối
+            database.ref('.info/connected').on('value', (snap) => {
+                const status = document.getElementById('connectionStatus');
+                if (snap.val() === true) {
+                    status.innerHTML = '<i class="fas fa-wifi"></i><span>Đã kết nối</span>';
+                    status.className = 'connection-status connected';
+                } else {
+                    status.innerHTML = '<i class="fas fa-wifi-slash"></i><span>Mất kết nối</span>';
+                    status.className = 'connection-status disconnected';
+                }
+            });
+            
+            console.log("✅ Firebase đã được khởi tạo");
+        } catch (error) {
+            console.error("❌ Lỗi khởi tạo Firebase:", error);
+            showMessage("Lỗi kết nối cơ sở dữ liệu", "error");
+        }
         
-        // 检查连接状态
-        database.ref('.info/connected').on('value', (snap) => {
-            const status = document.getElementById('connectionStatus');
-            if (snap.val() === true) {
-                status.innerHTML = '<i class="fas fa-wifi"></i><span>已连接</span>';
-                status.className = 'connection-status connected';
-            } else {
-                status.innerHTML = '<i class="fas fa-wifi-slash"></i><span>未连接</span>';
-                status.className = 'connection-status disconnected';
-            }
+        // Ẩn loading screen khi trang tải xong
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                document.getElementById('loadingScreen').style.display = 'none';
+            }, 500);
         });
     </script>
 
