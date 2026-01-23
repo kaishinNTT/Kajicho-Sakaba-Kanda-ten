@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <!-- Sửa deprecated meta tag -->
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>鍛治町酒場 神田店 - 勤務表管理</title>
     <link rel="stylesheet" href="style.css">
@@ -323,7 +325,7 @@
             <button type="button" class="quick-action" onclick="showStats()">
                 <i class="fas fa-chart-bar"></i>
                 <span data-lang="ja">統計</span>
-                <span data-lang="zh" style="display:none">统计</span>
+                                <span data-lang="zh" style="display:none">统计</span>
             </button>
             <button type="button" class="quick-action" onclick="printAllSchedule()">
                 <i class="fas fa-print"></i>
@@ -610,8 +612,9 @@
         </div>
     </div>
 
-    <!-- Firebase Configuration -->
+    <!-- Firebase Configuration - SỬA LỖI TRÙNG BIẾN -->
     <script>
+        // Xóa biến currentLanguage ở đây vì đã khai báo trong app.js
         const firebaseConfig = {
             apiKey: "AIzaSyB6C3s4EAPEx0GBLnBXAz4aYJfoCBEyofc",
             authDomain: "employee-schedule-893f5.firebaseapp.com",
@@ -624,10 +627,10 @@
         
         try {
             firebase.initializeApp(firebaseConfig);
-            const database = firebase.database();
+            window.database = firebase.database();
             
             // 接続状態チェック
-            database.ref('.info/connected').on('value', (snap) => {
+            window.database.ref('.info/connected').on('value', (snap) => {
                 const status = document.getElementById('connectionStatus');
                 if (snap.val() === true) {
                     status.innerHTML = '<i class="fas fa-wifi"></i><span data-lang="ja">接続済み</span><span data-lang="zh" style="display:none">已连接</span>';
@@ -641,99 +644,17 @@
             console.log("✅ Firebase initialized");
         } catch (error) {
             console.error("❌ Firebase initialization error:", error);
-            showMessage("データベース接続エラー", "error");
-        }
-        
-        // 言語設定
-        let currentLanguage = 'ja'; // デフォルトは日本語
-        
-        // 言語切り替え
-        document.getElementById('languageSwitch').addEventListener('click', function() {
-            currentLanguage = currentLanguage === 'ja' ? 'zh' : 'ja';
-            updateLanguage();
-        });
-        
-        function updateLanguage() {
-            // すべての言語要素を更新
-            document.querySelectorAll('[data-lang]').forEach(element => {
-                const jaElement = element.querySelector('[data-lang="ja"]');
-                const zhElement = element.querySelector('[data-lang="zh"]');
-                
-                if (jaElement && zhElement) {
-                    if (currentLanguage === 'ja') {
-                        jaElement.style.display = 'inline';
-                        zhElement.style.display = 'none';
-                    } else {
-                        jaElement.style.display = 'none';
-                        zhElement.style.display = 'inline';
-                    }
-                } else if (element.hasAttribute('data-lang')) {
-                    const lang = element.getAttribute('data-lang');
-                    element.style.display = lang === currentLanguage ? 'inline' : 'none';
-                }
-            });
-            
-            // 言語ボタン更新
-            const languageBtn = document.getElementById('languageSwitch');
-            const currentLangSpan = document.getElementById('currentLanguage');
-            if (currentLanguage === 'ja') {
-                currentLangSpan.textContent = '日本語';
-                languageBtn.title = 'Switch to Chinese';
-            } else {
-                currentLangSpan.textContent = '中文';
-                languageBtn.title = 'Switch to Japanese';
-            }
-            
-            // 日付表示更新
-            updateCurrentDate();
-            
-            // 検索ボックスのプレースホルダー
-            const searchInput = document.getElementById('employeeSearch');
-            if (searchInput) {
-                searchInput.placeholder = currentLanguage === 'ja' ? 'スタッフを検索...' : '搜索员工...';
-            }
-            
-            // 印刷用日付更新
-            updatePrintDate();
-        }
-        
-        function updatePrintDate() {
-            const today = new Date();
-            const options = { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit',
-                weekday: 'long'
-            };
-            
-            const printDateElement = document.getElementById('printDate');
-            if (printDateElement) {
-                if (currentLanguage === 'ja') {
-                    printDateElement.textContent = today.toLocaleDateString('ja-JP', options);
-                } else {
-                    printDateElement.textContent = today.toLocaleDateString('zh-CN', options);
-                }
+            // Hàm showMessage sẽ được định nghĩa trong app.js
+            if (typeof showMessage === 'function') {
+                showMessage("データベース接続エラー", "error");
             }
         }
         
         // ページ読み込み完了時
         window.addEventListener('load', function() {
-            // 言語設定読み込み
-            const savedLanguage = localStorage.getItem('appLanguage');
-            if (savedLanguage) {
-                currentLanguage = savedLanguage;
-            }
-            
-            updateLanguage();
-            
             setTimeout(function() {
                 document.getElementById('loadingScreen').style.display = 'none';
             }, 500);
-        });
-        
-        // 言語設定保存
-        window.addEventListener('beforeunload', function() {
-            localStorage.setItem('appLanguage', currentLanguage);
         });
     </script>
 
