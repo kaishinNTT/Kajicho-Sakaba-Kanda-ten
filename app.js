@@ -988,22 +988,26 @@ function findScheduleByEmployeeAndDate(employeeId, date) {
 }
 
 // ==================== WEEKDAY SELECTOR ====================
+
 function initWeekdaysSelector() {
     const today = new Date();
-    const currentDay = today.getDay();
+    const currentDay = today.getDay(); // 0=Chủ nhật, 1=Thứ 2, ..., 6=Thứ 7
     
-    // Calculate Monday of this week
+    // Tính Thứ Hai (Monday) của tuần này
     const monday = new Date(today);
+    // Nếu hôm nay là Chủ nhật (0), lùi 6 ngày để về Thứ 2
+    // Nếu hôm nay là Thứ 2 đến Thứ 7, lùi về Thứ 2
     monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     
+    // Thứ tự đúng: Thứ 2 -> Chủ nhật
     const weekdays = [
-        { id: 1, label: 'Mon', default: true },
-        { id: 2, label: 'Tue', default: true },
-        { id: 3, label: 'Wed', default: true },
-        { id: 4, label: 'Thu', default: true },
-        { id: 5, label: 'Fri', default: true },
-        { id: 6, label: 'Sat', default: false },
-        { id: 0, label: 'Sun', default: false }
+        { id: 1, label: '月', default: true },  // Thứ 2
+        { id: 2, label: '火', default: true },  // Thứ 3
+        { id: 3, label: '水', default: true },  // Thứ 4
+        { id: 4, label: '木', default: true },  // Thứ 5
+        { id: 5, label: '金', default: true },  // Thứ 6
+        { id: 6, label: '土', default: false }, // Thứ 7
+        { id: 0, label: '日', default: false }  // Chủ nhật
     ];
     
     const container = document.getElementById('weekdaysSelector');
@@ -1079,20 +1083,21 @@ function showQuickWeekModal() {
 
 function updateWeekdaysSelector() {
     const today = new Date();
-    const currentDay = today.getDay();
+    const currentDay = today.getDay(); // 0=Chủ nhật, 1=Thứ 2, ..., 6=Thứ 7
     
-    // Calculate Monday of this week
+    // Tính Thứ Hai (Monday) của tuần này
     const monday = new Date(today);
     monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     
+    // Thứ tự đúng: Thứ 2 -> Chủ nhật
     const weekdays = [
-        { id: 1, label: 'Mon', default: true },
-        { id: 2, label: 'Tue', default: true },
-        { id: 3, label: 'Wed', default: true },
-        { id: 4, label: 'Thu', default: true },
-        { id: 5, label: 'Fri', default: true },
-        { id: 6, label: 'Sat', default: false },
-        { id: 0, label: 'Sun', default: false }
+        { id: 1, label: '月', default: true },  // Thứ 2
+        { id: 2, label: '火', default: true },  // Thứ 3
+        { id: 3, label: '水', default: true },  // Thứ 4
+        { id: 4, label: '木', default: true },  // Thứ 5
+        { id: 5, label: '金', default: true },  // Thứ 6
+        { id: 6, label: '土', default: false }, // Thứ 7
+        { id: 0, label: '日', default: false }  // Chủ nhật
     ];
     
     const container = document.getElementById('weekdaysSelector');
@@ -1100,8 +1105,8 @@ function updateWeekdaysSelector() {
     
     // Day names based on language
     const dayNames = currentLanguage === 'ja' 
-        ? ['月', '火', '水', '木', '金', '土', '日']
-        : ['一', '二', '三', '四', '五', '六', '日'];
+        ? ['月', '火', '水', '木', '金', '土', '日']  // Thứ tự đúng: Thứ 2 đến Chủ nhật
+        : ['一', '二', '三', '四', '五', '六', '日']; // Thứ tự đúng: Thứ 2 đến Chủ nhật
     
     let html = '';
     weekdays.forEach((day, index) => {
@@ -1266,29 +1271,30 @@ function showSetRestDaysModal() {
 
 function updateRestDaysSelector() {
     const today = new Date();
-    const currentDay = today.getDay();
+    const currentDay = today.getDay(); // 0=Chủ nhật, 1=Thứ 2, ..., 6=Thứ 7
     
-    // Calculate Monday of this week
+    // Tính Thứ Hai (Monday) của tuần này
     const monday = new Date(today);
     monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
     
+    // Thứ tự đúng: Thứ 2 -> Chủ nhật
     const weekdays = [
-        { id: 1, label: 'Mon', default: false },
-        { id: 2, label: 'Tue', default: false },
-        { id: 3, label: 'Wed', default: false },
-        { id: 4, label: 'Thu', default: false },
-        { id: 5, label: 'Fri', default: false },
-        { id: 6, label: 'Sat', default: false },
-        { id: 0, label: 'Sun', default: false }
+        { id: 1, label: 'Mon', default: false }, // Thứ 2
+        { id: 2, label: 'Tue', default: false }, // Thứ 3
+        { id: 3, label: 'Wed', default: false }, // Thứ 4
+        { id: 4, label: 'Thu', default: false }, // Thứ 5
+        { id: 5, label: 'Fri', default: false }, // Thứ 6
+        { id: 6, label: 'Sat', default: false }, // Thứ 7
+        { id: 0, label: 'Sun', default: false }  // Chủ nhật
     ];
     
     const container = document.getElementById('restDaysSelector');
     if (!container) return;
     
-    // Day names based on language
+    // Day names based on language - Thứ tự đúng
     const dayNames = currentLanguage === 'ja' 
-        ? ['月', '火', '水', '木', '金', '土', '日']
-        : ['一', '二', '三', '四', '五', '六', '日'];
+        ? ['月', '火', '水', '木', '金', '土', '日']  // Thứ 2 đến Chủ nhật
+        : ['一', '二', '三', '四', '五', '六', '日']; // Thứ 2 đến Chủ nhật
     
     let html = '';
     weekdays.forEach((day, index) => {
@@ -1774,6 +1780,7 @@ function getWeekDates(weekOffset = 0) {
 
 function generateWeekDays(startDate) {
     const days = [];
+    // Thứ tự đúng: Thứ 2 đến Chủ nhật
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
     for (let i = 0; i < 7; i++) {
