@@ -758,17 +758,6 @@ body {
     transform: translateY(-2px);
 }
 
-.quick-action:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.quick-action:disabled:hover {
-    background: none;
-    color: var(--gray);
-    transform: none;
-}
-
 .quick-action i {
     font-size: 20px;
 }
@@ -896,6 +885,10 @@ body {
     font-size: 16px;
 }
 
+.week-summary {
+    margin-top: 16px;
+}
+
 .week-summary h4 {
     font-size: 16px;
     margin-bottom: 16px;
@@ -937,6 +930,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    margin-top: 24px;
 }
 
 .btn-action {
@@ -971,6 +965,21 @@ body {
     background: #fee2e2;
     border-color: #dc2626;
     color: #dc2626;
+}
+
+/* Split buttons in employee detail */
+.split-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+}
+
+.split-buttons .btn-action {
+    margin: 0;
+    width: 100%;
+    font-size: 14px;
+    padding: 12px 8px;
 }
 
 /* Position Select */
@@ -1044,6 +1053,7 @@ body {
     display: flex;
     gap: 8px;
     margin-top: 12px;
+    flex-wrap: wrap;
 }
 
 .day-preset {
@@ -1057,12 +1067,69 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+    min-width: 100px;
 }
 
 .day-preset:hover {
     border-color: var(--primary);
     color: var(--primary);
     transform: translateY(-2px);
+}
+
+/* Smart Schedule Modal */
+.smart-time-presets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.time-preset-card {
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    width: 100%;
+}
+
+.time-preset-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.preset-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--light);
+    border-radius: 8px;
+}
+
+.preset-info {
+    flex: 1;
+}
+
+.preset-title {
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.preset-time {
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 500;
 }
 
 .info-box {
@@ -1264,6 +1331,10 @@ body {
     .time-group {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
+    
+    .smart-time-presets {
+        grid-template-columns: repeat(4, 1fr);
+    }
 }
 
 @media (min-width: 1024px) {
@@ -1319,38 +1390,23 @@ body {
 .status-none { color: var(--gray); }
 
 /* Scrollbar Styling */
-.weekly-schedule::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-.weekly-schedule::-webkit-scrollbar-track {
-    background: var(--light);
-    border-radius: 3px;
-}
-
-.weekly-schedule::-webkit-scrollbar-thumb {
-    background: var(--gray);
-    border-radius: 3px;
-}
-
-.weekly-schedule::-webkit-scrollbar-thumb:hover {
-    background: var(--dark);
-}
-
+.weekly-schedule::-webkit-scrollbar,
 .modal-content::-webkit-scrollbar {
     width: 6px;
 }
 
+.weekly-schedule::-webkit-scrollbar-track,
 .modal-content::-webkit-scrollbar-track {
     background: transparent;
 }
 
+.weekly-schedule::-webkit-scrollbar-thumb,
 .modal-content::-webkit-scrollbar-thumb {
     background: var(--light-gray);
     border-radius: 3px;
 }
 
+.weekly-schedule::-webkit-scrollbar-thumb:hover,
 .modal-content::-webkit-scrollbar-thumb:hover {
     background: var(--gray);
 }
