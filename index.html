@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能排班系统</title>
+    <title>Kajicho Kanda 排班系统</title>
     <link rel="stylesheet" href="style.css">
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -17,7 +17,7 @@
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <h1><i class="fas fa-calendar-alt"></i> 智能排班</h1>
+                <h1><i class="fas fa-calendar-alt"></i> Kajicho Kanda</h1>
                 <div class="connection-status" id="connectionStatus">
                     <i class="fas fa-wifi"></i>
                     <span>已连接</span>
@@ -294,12 +294,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> 选择工作日</label>
+                        <label><i class="fas fa-calendar-check"></i> 设置工作日</label>
                         <div class="weekdays-selector" id="weekdaysSelector">
                             <!-- 工作日选择器 -->
                         </div>
                         <div class="quick-day-buttons">
                             <button class="day-preset" onclick="setAllWeekdays()">全选工作日</button>
+                            <button class="day-preset" onclick="setAllAsRest()">全设为休息</button>
                             <button class="day-preset" onclick="clearWeekdays()">清除所有</button>
                         </div>
                     </div>
@@ -308,6 +309,45 @@
                 <div class="modal-actions">
                     <button class="btn-primary" onclick="applyQuickWeekSchedule()">
                         <i class="fas fa-check"></i> 应用排班
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Set Rest Days Modal -->
+    <div class="modal" id="setRestDaysModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-umbrella-beach"></i> 设置休息日</h3>
+                <button class="modal-close" onclick="closeModal('setRestDaysModal')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="rest-days-options">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> 选择员工</label>
+                        <select id="restDaysEmployee" class="select-input">
+                            <option value="">选择员工</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-calendar-check"></i> 选择休息日</label>
+                        <div class="weekdays-selector" id="restDaysSelector">
+                            <!-- 休息日选择器 -->
+                        </div>
+                        <div class="quick-day-buttons">
+                            <button class="day-preset" onclick="setAllRestDays()">全设为休息</button>
+                            <button class="day-preset" onclick="clearRestDays()">清除所有</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="btn-primary" onclick="applyRestDays()">
+                        <i class="fas fa-umbrella-beach"></i> 应用休息日
                     </button>
                 </div>
             </div>
