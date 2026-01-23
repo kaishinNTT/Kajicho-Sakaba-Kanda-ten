@@ -144,6 +144,92 @@ function setupEventListeners() {
     });
 }
 
+// ==================== 时间验证函数 ====================
+function validateTimeRange(startTime, endTime) {
+    // 处理跨午夜的特殊情况
+    const startParts = startTime.split(':').map(Number);
+    const endParts = endTime.split(':').map(Number);
+    
+    // 检查时间格式
+    if (startParts.length !== 2 || endParts.length !== 2) {
+        showMessage('时间格式不正确', 'warning');
+        return false;
+    }
+    
+    // 检查时间是否在有效范围内
+    if (startParts[0] < 0 || startParts[0] > 23 || startParts[1] < 0 || startParts[1] > 59 ||
+        endParts[0] < 0 || endParts[0] > 23 || endParts[1] < 0 || endParts[1] > 59) {
+        showMessage('时间必须在 00:00 到 23:59 之间', 'warning');
+        return false;
+    }
+    
+    // 计算分钟数进行比较
+    const startTotalMinutes = startParts[0] * 60 + startParts[1];
+    const endTotalMinutes = endParts[0] * 60 + endParts[1];
+    
+    // 判断是否跨午夜
+    const isCrossMidnight = endTotalMinutes < startTotalMinutes;
+    
+    // 计算实际工时（考虑跨午夜）
+    let actualWorkMinutes;
+    if (isCrossMidnight) {
+        // 跨午夜：从开始时间到午夜 + 从午夜到结束时间
+        actualWorkMinutes = (24 * 60 - startTotalMinutes) + endTotalMinutes;
+    } else {
+        // 不跨午夜
+        actualWorkMinutes = endTotalMinutes - startTotalMinutes;
+    }
+    
+    // 检查工时是否合理
+    if (actualWorkMinutes > 24 * 60) {
+        showMessage('工作时间不能超过24小时', 'warning');
+        return false;
+    }
+    
+    if (actualWorkMinutes === 0) {
+        showMessage('开始时间和结束时间不能相同', 'warning');
+        return false;
+    }
+    
+    // 检查班次是否太短（至少15分钟）
+    if (actualWorkMinutes < 15) {
+        showMessage('工作时间至少需要15分钟', 'warning');
+        return false;
+    }
+    
+    return true;
+}
+
+// ==================== 计算工时函数（已修复跨午夜问题） ====================
+function calculateShiftHours(startTime, endTime) {
+    if (!startTime || !endTime || startTime === '00:00' || endTime === '00:00') {
+        return 0;
+    }
+    
+    const startParts = startTime.split(':').map(Number);
+    const endParts = endTime.split(':').map(Number);
+    
+    if (startParts.length !== 2 || endParts.length !== 2) {
+        return 0;
+    }
+    
+    const startTotalMinutes = startParts[0] * 60 + startParts[1];
+    const endTotalMinutes = endParts[0] * 60 + endParts[1];
+    
+    // 判断是否跨午夜
+    let workMinutes;
+    if (endTotalMinutes < startTotalMinutes) {
+        // 跨午夜：从开始时间到午夜 + 从午夜到结束时间
+        workMinutes = (24 * 60 - startTotalMinutes) + endTotalMinutes;
+    } else {
+        // 不跨午夜
+        workMinutes = endTotalMinutes - startTotalMinutes;
+    }
+    
+    const workHours = workMinutes / 60;
+    return Math.round(workHours * 100) / 100; // 保留两位小数
+}
+
 // ==================== VIEW MANAGEMENT ====================
 function switchView(viewName) {
     // 隐藏所有视图
@@ -513,12 +599,19 @@ function selectScheduleType(type) {
 function setTimePreset(start, end) {
     document.getElementById('scheduleStart').value = start;
     document.getElementById('scheduleEnd').value = end;
-    showMessage(`已设置时间: ${start} - ${end}`, 'info');
+    
+    // 计算并显示工时
+    const hours = calculateShiftHours(start, end);
+    showMessage(`已设置时间: ${start} - ${end} (${hours}小时)`, 'info');
 }
 
 function setQuickTimePreset(start, end) {
     document.getElementById('quickWeekStart').value = start;
     document.getElementById('quickWeekEnd').value = end;
+    
+    // 计算并显示工时
+    const hours = calculateShiftHours(start, end);
+    showMessage(`已设置时间: ${start} - ${end} (${hours}小时)`, 'info');
 }
 
 function addSchedule() {
@@ -551,9 +644,8 @@ function addSchedule() {
             return;
         }
         
-        if (startTime >= endTime) {
-            showMessage('结束时间必须晚于开始时间', 'warning');
-            document.getElementById('scheduleEnd').focus();
+        // 使用新的时间验证逻辑
+        if (!validateTimeRange(startTime, endTime)) {
             return;
         }
     }
@@ -634,7 +726,7 @@ function showSmartSchedule() {
 }
 
 function selectSmartTime(start, end) {
-    showMessage(`已选择: ${start} - ${end}`, 'info');
+    showMessage(`已选择: ${start} - ${end} (${calculateShiftHours(start, end)}小时)`, 'info');
 }
 
 function selectWeekdaysByPattern(pattern) {
@@ -800,8 +892,8 @@ function applyQuickWeekSchedule() {
         return;
     }
     
-    if (startTime >= endTime) {
-        showMessage('结束时间必须晚于开始时间', 'warning');
+    // 使用新的时间验证逻辑
+    if (!validateTimeRange(startTime, endTime)) {
         return;
     }
     
@@ -1111,8 +1203,8 @@ function saveDaySchedule(employeeId, date) {
             return;
         }
         
-        if (startTime >= endTime) {
-            showMessage('结束时间必须晚于开始时间', 'warning');
+        // 使用新的时间验证逻辑
+        if (!validateTimeRange(startTime, endTime)) {
             return;
         }
         
@@ -1592,25 +1684,6 @@ function calculateMonthlyHours(employeeId) {
     }, 0);
 }
 
-function calculateShiftHours(startTime, endTime) {
-    if (!startTime || !endTime || startTime === '00:00' || endTime === '00:00') {
-        return 0;
-    }
-    
-    const start = new Date(`2000-01-01T${startTime}`);
-    const end = new Date(`2000-01-01T${endTime}`);
-    
-    // 处理跨午夜的情况
-    if (end < start) {
-        end.setDate(end.getDate() + 1);
-    }
-    
-    const diffMs = end - start;
-    const diffHours = diffMs / (1000 * 60 * 60);
-    
-    return Math.round(diffHours * 100) / 100; // 保留两位小数
-}
-
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('zh-CN', {
@@ -1667,3 +1740,54 @@ function showMessage(text, type = 'info') {
         setTimeout(() => message.remove(), 300);
     }, 3000);
 }
+
+// 添加消息样式
+const messageStyle = document.createElement('style');
+messageStyle.textContent = `
+    .app-message {
+        position: fixed;
+        top: 100px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-20px);
+        padding: 14px 24px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 10000;
+        opacity: 0;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        font-weight: 500;
+        max-width: 90%;
+        backdrop-filter: blur(10px);
+    }
+    .app-message.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    .message-success {
+        background: rgba(46, 196, 182, 0.95);
+        color: white;
+        border: 1px solid rgba(46, 196, 182, 0.3);
+    }
+    .message-error {
+        background: rgba(247, 37, 133, 0.95);
+        color: white;
+        border: 1px solid rgba(247, 37, 133, 0.3);
+    }
+    .message-warning {
+        background: rgba(248, 150, 30, 0.95);
+        color: white;
+        border: 1px solid rgba(248, 150, 30, 0.3);
+    }
+    .message-info {
+        background: rgba(67, 97, 238, 0.95);
+        color: white;
+        border: 1px solid rgba(67, 97, 238, 0.3);
+    }
+    .app-message i {
+        font-size: 18px;
+    }
+`;
+document.head.appendChild(messageStyle);
