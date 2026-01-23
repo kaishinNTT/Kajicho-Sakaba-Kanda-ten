@@ -92,6 +92,7 @@
                 <div class="weekly-schedule" id="weeklySchedule">
                     <!-- 周排班表 -->
                 </div>
+            </div>
 
             <!-- SCHEDULE VIEW -->
             <div class="view" id="scheduleView">
@@ -261,182 +262,53 @@
     </div>
 
     <!-- Quick Week Schedule Modal -->
-<div class="modal" id="quickWeekModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-calendar-week"></i> 快速整周排班</h3>
-            <button class="modal-close" onclick="closeModal('quickWeekModal')">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="modal-body">
-            <div class="quick-week-options">
-                <div class="form-group">
-                    <label><i class="fas fa-user"></i> 选择员工</label>
-                    <select id="quickWeekEmployee" class="select-input">
-                        <option value="">选择员工</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-clock"></i> 工作时间</label>
-                    <div class="time-group">
-                        <input type="time" id="quickWeekStart" class="input-field" value="08:00">
-                        <span class="time-separator">至</span>
-                        <input type="time" id="quickWeekEnd" class="input-field" value="17:00">
-                    </div>
-                    <div class="quick-time-buttons">
-                        <button class="time-preset" onclick="setQuickTimePreset('08:00', '17:00')">早班</button>
-                        <button class="time-preset" onclick="setQuickTimePreset('12:00', '21:00')">晚班</button>
-                        <button class="time-preset" onclick="setQuickTimePreset('09:00', '18:00')">全天</button>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label><i class="fas fa-calendar-check"></i> 选择日期</label>
-                    <div class="weekdays-selector" id="weekdaysSelector">
-                        <!-- Sẽ được cập nhật bằng JavaScript -->
-                    </div>
-                    <div class="quick-day-buttons">
-                        <button class="day-preset" onclick="setAllWeekdays()">全选工作日</button>
-                        <button class="day-preset" onclick="clearWeekdays()">清除所有</button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-actions">
-                <button class="btn-primary" onclick="applyQuickWeekSchedule()">
-                    <i class="fas fa-check"></i> 应用排班
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-    <!-- Smart Schedule Modal -->
-    <div class="modal" id="smartScheduleModal">
+    <div class="modal" id="quickWeekModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-brain"></i> 智能排班</h3>
-                <button class="modal-close" onclick="closeModal('smartScheduleModal')">
+                <h3><i class="fas fa-calendar-week"></i> 快速整周排班</h3>
+                <button class="modal-close" onclick="closeModal('quickWeekModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="smart-schedule-options">
+                <div class="quick-week-options">
                     <div class="form-group">
-                        <label><i class="fas fa-users"></i> 选择员工组</label>
-                        <select id="smartGroup" class="select-input">
-                            <option value="selected">当前选中员工</option>
-                            <option value="all">所有员工</option>
-                            <option value="front">前台/服务区</option>
-                            <option value="kitchen">厨房区</option>
+                        <label><i class="fas fa-user"></i> 选择员工</label>
+                        <select id="quickWeekEmployee" class="select-input">
+                            <option value="">选择员工</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-clock"></i> 智能时间推荐</label>
-                        <div class="smart-time-presets">
-                            <button class="time-preset-card" onclick="selectSmartTime('08:00', '17:00')">
-                                <div class="preset-icon">🕗</div>
-                                <div class="preset-info">
-                                    <div class="preset-title">标准班</div>
-                                    <div class="preset-time">08:00 - 17:00</div>
-                                </div>
-                            </button>
-                            
-                            <button class="time-preset-card" onclick="selectSmartTime('06:00', '15:00')">
-                                <div class="preset-icon">☀️</div>
-                                <div class="preset-info">
-                                    <div class="preset-title">早班</div>
-                                    <div class="preset-time">06:00 - 15:00</div>
-                                </div>
-                            </button>
-                            
-                            <button class="time-preset-card" onclick="selectSmartTime('12:00', '21:00')">
-                                <div class="preset-icon">🌤️</div>
-                                <div class="preset-info">
-                                    <div class="preset-title">中班</div>
-                                    <div class="preset-time">12:00 - 21:00</div>
-                                </div>
-                            </button>
-                            
-                            <button class="time-preset-card" onclick="selectSmartTime('09:00', '18:00')">
-                                <div class="preset-icon">⏰</div>
-                                <div class="preset-info">
-                                    <div class="preset-title">全天班</div>
-                                    <div class="preset-time">09:00 - 18:00</div>
-                                </div>
-                            </button>
+                        <label><i class="fas fa-clock"></i> 工作时间</label>
+                        <div class="time-group">
+                            <input type="time" id="quickWeekStart" class="input-field" value="08:00">
+                            <span class="time-separator">至</span>
+                            <input type="time" id="quickWeekEnd" class="input-field" value="17:00">
+                        </div>
+                        <div class="quick-time-buttons">
+                            <button class="time-preset" onclick="setQuickTimePreset('08:00', '17:00')">早班</button>
+                            <button class="time-preset" onclick="setQuickTimePreset('12:00', '21:00')">晚班</button>
+                            <button class="time-preset" onclick="setQuickTimePreset('09:00', '18:00')">全天</button>
                         </div>
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-calendar-check"></i> 工作日</label>
-                        <div class="weekdays-selector" id="smartWeekdays">
+                        <label><i class="fas fa-calendar-check"></i> 选择工作日</label>
+                        <div class="weekdays-selector" id="weekdaysSelector">
                             <!-- 工作日选择器 -->
                         </div>
                         <div class="quick-day-buttons">
-                            <button class="day-preset" onclick="setAllWeekdaysSmart()">全选工作日</button>
-                            <button class="day-preset" onclick="selectWeekdaysByPattern('weekdays')">工作日(一至五)</button>
-                            <button class="day-preset" onclick="selectWeekdaysByPattern('weekend')">周末班</button>
-                            <button class="day-preset" onclick="clearWeekdaysSmart()">清除所有</button>
+                            <button class="day-preset" onclick="setAllWeekdays()">全选工作日</button>
+                            <button class="day-preset" onclick="clearWeekdays()">清除所有</button>
                         </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label><i class="fas fa-calendar-alt"></i> 应用周数</label>
-                        <select id="smartWeeks" class="select-input">
-                            <option value="1">本周</option>
-                            <option value="2">2周</option>
-                            <option value="4" selected>4周</option>
-                        </select>
-                    </div>
-                    
-                    <div class="info-box">
-                        <i class="fas fa-info-circle"></i>
-                        <span>将为选中的员工组批量设置相同的工作时间</span>
                     </div>
                 </div>
                 
                 <div class="modal-actions">
-                    <button class="btn-primary" onclick="applySmartSchedule()">
-                        <i class="fas fa-bolt"></i> 应用智能排班
+                    <button class="btn-primary" onclick="applyQuickWeekSchedule()">
+                        <i class="fas fa-check"></i> 应用排班
                     </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Export Options Modal -->
-    <div class="modal" id="exportModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-share-alt"></i> 分享选项</h3>
-                <button class="modal-close" onclick="closeModal('exportModal')">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="export-options">
-                    <div class="export-option" onclick="copyScheduleAsText()">
-                        <div class="export-icon">
-                            <i class="fas fa-copy"></i>
-                        </div>
-                        <div class="export-info">
-                            <strong>复制文本格式</strong>
-                            <small>适合粘贴到微信、短信</small>
-                        </div>
-                    </div>
-                    
-                    <div class="export-option" onclick="printSchedule()">
-                        <div class="export-icon">
-                            <i class="fas fa-print"></i>
-                        </div>
-                        <div class="export-info">
-                            <strong>打印排班表</strong>
-                            <small>直接打印或保存为PDF</small>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
