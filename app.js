@@ -1001,15 +1001,6 @@ function setAllWeekdays() {
     });
 }
 
-function setAllAsRest() {
-    const buttons = document.querySelectorAll('#weekdaysSelector .weekday-btn');
-    if (buttons.length === 0) return;
-    
-    buttons.forEach(btn => {
-        btn.classList.add('active', 'rest');
-    });
-}
-
 function clearWeekdays() {
     const buttons = document.querySelectorAll('#weekdaysSelector .weekday-btn');
     if (buttons.length === 0) return;
@@ -1258,12 +1249,6 @@ function updateRestDaysSelector() {
 function toggleRestDay(button) {
     button.classList.toggle('active');
     button.classList.toggle('rest');
-}
-
-function setAllRestDays() {
-    document.querySelectorAll('#restDaysSelector .weekday-btn').forEach(btn => {
-        btn.classList.add('active', 'rest');
-    });
 }
 
 function clearRestDays() {
@@ -1830,6 +1815,463 @@ function refreshData() {
     });
 }
 
+// ==================== COPY TEXT FUNCTION ====================
+function copyScheduleAsText() {
+    if (!selectedEmployee) {
+        showMessage(currentLanguage === 'ja' ? 'スタッフを選択してください' : '请先选择员工', 'warning');
+        return;
+    }
+    
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+    
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
+    const weeklyHours = calculateWeeklyHours(selectedEmployee);
+    const monthlyHours = calculateMonthlyHours(selectedEmployee);
+    const days = generateWeekDays(startDate);
+    
+    // Generate formatted text
+    let text = `【${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}】\n`;
+    text += `${currentLanguage === 'ja' ? '職種:' : '职位:'} ${currentLanguage === 'ja' ? 
+        (employee.position === '厨房区' ? '厨房' : 'フロント') : 
+        (employee.position === '厨房区' ? '厨房' : '前台')}\n`;
+    text += `${currentLanguage === 'ja' ? '日付:' : '日期:'} ${formatDate(startDate)} ${currentLanguage === 'ja' ? '〜' : '至'} ${formatDate(endDate)}\n`;
+    text += `${currentLanguage === 'ja' ? '今週:' : '本周:'} ${weeklyHours}${currentLanguage === 'ja' ? '時間' : '小时'} | ${currentLanguage === 'ja' ? '今月:' : '本月:'} ${monthlyHours}${currentLanguage === 'ja' ? '時間' : '小时'}\n\n`;
+    text += `📅 ${currentLanguage === 'ja' ? '今週のスケジュール:' : '本周排班:'}\n`;
+    
+    // Day names for display
+    const dayNames = currentLanguage === 'ja' 
+        ? ['月', '火', '水', '木', '金', '土', '日']
+        : ['一', '二', '三', '四', '五', '六', '日'];
+    
+    days.forEach((day, index) => {
+        const schedule = weekSchedule.find(s => s.date === day.dateString);
+        const scheduleText = schedule ? 
+            (schedule.isDayOff ? '🏖️ ' + (currentLanguage === 'ja' ? '休み' : '休息') : `🕐 ${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}-${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}`) : 
+            '📭 ' + (currentLanguage === 'ja' ? 'なし' : '无');
+        
+        text += `${dayNames[index]} (${day.date}): ${scheduleText}\n`;
+    });
+    
+    text += `\n📍 ${currentLanguage === 'ja' ? '勤務エリア:' : '工作区域:'} ${employee.position === '厨房区' ? 
+        (currentLanguage === 'ja' ? '厨房 👨‍🍳' : '厨房 👨‍🍳') : 
+        (currentLanguage === 'ja' ? 'フロント/サービス 💁' : '前台/服务 💁')}\n`;
+    text += `📊 ${currentLanguage === 'ja' ? '今週:' : '本周:'} ${weekSchedule.filter(s => !s.isDayOff).length}${currentLanguage === 'ja' ? '勤務日' : '工作日'}, ${weekSchedule.filter(s => s.isDayOff).length}${currentLanguage === 'ja' ? '休日' : '休息日'}\n`;
+    text += `\n⏰ ${currentLanguage === 'ja' ? '生成日時:' : '生成时间:'} ${new Date().toLocaleString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    })}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            showMessage(currentLanguage === 'ja' ? 'クリップボードにコピーしました' : '已复制到剪贴板', 'success');
+            closeModal('employeeModal');
+        })
+        .catch(err => {
+            console.error('Copy failed:', err);
+            
+            // Fallback
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showMessage(currentLanguage === 'ja' ? 'クリップボードにコピーしました' : '已复制到剪贴板', 'success');
+            } catch (err) {
+                showMessage(currentLanguage === 'ja' ? 'コピーに失敗しました' : '复制失败', 'error');
+            }
+            document.body.removeChild(textarea);
+            
+            closeModal('employeeModal');
+        });
+}
+
+// ==================== PRINT FUNCTION ====================
+function printSchedule() {
+    if (!selectedEmployee) {
+        showMessage(currentLanguage === 'ja' ? 'スタッフを選択してください' : '请先选择员工', 'warning');
+        return;
+    }
+    
+    const employee = employees.find(e => e.id === selectedEmployee);
+    if (!employee) return;
+    
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedule = getEmployeeSchedulesForWeek(selectedEmployee, startDate, endDate);
+    const weeklyHours = calculateWeeklyHours(selectedEmployee);
+    const monthlyHours = calculateMonthlyHours(selectedEmployee);
+    const days = generateWeekDays(startDate);
+    
+    // Create print content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}</title>
+            <meta charset="UTF-8">
+            <style>
+                body { 
+                    font-family: 'Microsoft YaHei', 'Meiryo', sans-serif; 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: white;
+                    color: #333;
+                    font-size: 12px;
+                }
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 10px;
+                    border-bottom: 2px solid #2563eb;
+                }
+                .company-name {
+                    font-size: 18px;
+                    color: #2563eb;
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                }
+                .employee-name {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #333;
+                    margin: 5px 0;
+                }
+                .info-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 8px 0;
+                    padding: 4px 0;
+                    border-bottom: 1px solid #eee;
+                }
+                .info-label {
+                    color: #666;
+                    font-weight: 500;
+                }
+                .info-value {
+                    font-weight: bold;
+                    color: #2563eb;
+                }
+                .schedule-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                    font-size: 10px;
+                }
+                .schedule-table th {
+                    background: #e6f0ff;
+                    padding: 8px 4px;
+                    text-align: center;
+                    border: 1px solid #ddd;
+                    font-weight: bold;
+                }
+                .schedule-table td {
+                    padding: 8px 4px;
+                    text-align: center;
+                    border: 1px solid #ddd;
+                    vertical-align: middle;
+                }
+                .work-day {
+                    background: #d1fae5;
+                    color: #065f46;
+                }
+                .rest-day {
+                    background: #fef3c7;
+                    color: #92400e;
+                }
+                .empty-day {
+                    background: #f8fafc;
+                    color: #94a3b8;
+                }
+                .time-display {
+                    font-size: 9px;
+                    line-height: 1.2;
+                }
+                .footer {
+                    margin-top: 30px;
+                    text-align: center;
+                    color: #666;
+                    font-size: 10px;
+                    border-top: 1px solid #eee;
+                    padding-top: 10px;
+                }
+                @media print {
+                    @page {
+                        margin: 0.5cm;
+                        size: auto;
+                    }
+                    body {
+                        padding: 10px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <div class="company-name">鍛治町酒場 神田店</div>
+                <div class="employee-name">${employee.name}</div>
+                <div style="color: #666; font-size: 11px;">
+                    ${currentLanguage === 'ja' ? '職種:' : '职位:'} ${currentLanguage === 'ja' ? 
+                        (employee.position === '厨房区' ? '厨房' : 'フロント') : 
+                        (employee.position === '厨房区' ? '厨房' : '前台')}
+                </div>
+                <div style="color: #666; font-size: 11px; margin-top: 5px;">
+                    ${currentLanguage === 'ja' ? '期間:' : '期间:'} ${formatDate(startDate)} - ${formatDate(endDate)}
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 14px; color: #2563eb; font-weight: bold;">${weeklyHours}</div>
+                    <div style="font-size: 10px; color: #666;">${currentLanguage === 'ja' ? '今週時間' : '本周工时'}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 14px; color: #2563eb; font-weight: bold;">${monthlyHours}</div>
+                    <div style="font-size: 10px; color: #666;">${currentLanguage === 'ja' ? '今月時間' : '本月工时'}</div>
+                </div>
+            </div>
+            
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>${currentLanguage === 'ja' ? '曜日' : '星期'}</th>
+                        <th>${currentLanguage === 'ja' ? '日付' : '日期'}</th>
+                        <th>${currentLanguage === 'ja' ? '状態' : '状态'}</th>
+                        <th>${currentLanguage === 'ja' ? '時間' : '时间'}</th>
+                        <th>${currentLanguage === 'ja' ? '時間数' : '小时数'}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${days.map(day => {
+                        const schedule = weekSchedule.find(s => s.date === day.dateString);
+                        let statusClass = 'empty-day';
+                        let statusText = currentLanguage === 'ja' ? 'なし' : '无';
+                        let timeDisplay = '';
+                        let hours = '';
+                        
+                        if (schedule) {
+                            if (schedule.isDayOff) {
+                                statusClass = 'rest-day';
+                                statusText = currentLanguage === 'ja' ? '休み' : '休息';
+                            } else {
+                                statusClass = 'work-day';
+                                statusText = currentLanguage === 'ja' ? '勤務' : '工作';
+                                timeDisplay = `${schedule.startTime ? schedule.startTime.substring(0, 5) : ''} - ${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}`;
+                                hours = calculateShiftHours(schedule.startTime, schedule.endTime) + 'h';
+                            }
+                        }
+                        
+                        // Day names for display
+                        const dayNames = currentLanguage === 'ja' 
+                            ? ['月', '火', '水', '木', '金', '土', '日']
+                            : ['一', '二', '三', '四', '五', '六', '日'];
+                        
+                        const dateParts = day.date.split('/');
+                        const month = dateParts[0];
+                        const dayNum = dateParts[1];
+                        
+                        return `
+                            <tr>
+                                <td>${dayNames[day.dayIndex]}</td>
+                                <td>${month}/${dayNum}</td>
+                                <td class="${statusClass}">${statusText}</td>
+                                <td>${timeDisplay}</td>
+                                <td>${hours}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+            
+            <div class="footer">
+                ${currentLanguage === 'ja' ? '印刷日:' : '打印日期:'} ${new Date().toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN')}
+            </div>
+        </body>
+        </html>
+    `;
+    
+    // Open print window
+    try {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            
+            // Print after content loads
+            setTimeout(() => {
+                printWindow.print();
+                setTimeout(() => {
+                    printWindow.close();
+                }, 500);
+            }, 500);
+            
+            showMessage(currentLanguage === 'ja' ? '印刷プレビューを開いています...' : '正在打开打印预览...', 'info');
+            closeModal('employeeModal');
+        }
+    } catch (error) {
+        console.error("Print error:", error);
+        showMessage(currentLanguage === 'ja' ? "印刷エラー: " : "打印错误: " + error.message, "error");
+    }
+}
+
+function printAllSchedule() {
+    const { startDate, endDate } = getWeekDates(currentWeek);
+    const weekSchedule = getWeekSchedules(startDate, endDate);
+    const days = generateWeekDays(startDate);
+    
+    // Date format for display
+    const dateOptions = { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        weekday: 'long'
+    };
+    
+    const startDateStr = startDate.toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', dateOptions);
+    const endDateStr = endDate.toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', dateOptions);
+    
+    // Create compact table structure
+    let tableHTML = `
+        <style>
+            body { font-family: 'Microsoft YaHei', 'Meiryo', sans-serif; margin: 10px; font-size: 10px; }
+            .print-header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #2563eb; }
+            .company-name { font-size: 16px; color: #2563eb; font-weight: bold; margin-bottom: 5px; }
+            .schedule-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .schedule-table th { background: #e6f0ff; padding: 6px 3px; text-align: center; border: 1px solid #ddd; font-weight: bold; }
+            .schedule-table td { padding: 6px 3px; text-align: center; border: 1px solid #ddd; vertical-align: top; }
+            .work-cell { background: #d1fae5; color: #065f46; font-size: 9px; }
+            .rest-cell { background: #fef3c7; color: #92400e; font-size: 9px; }
+            .empty-cell { background: #f8fafc; color: #94a3b8; font-size: 9px; }
+            .time-display { font-size: 8px; line-height: 1.1; }
+            @media print { @page { margin: 0.3cm; size: landscape; } }
+        </style>
+        <div class="print-header">
+            <div class="company-name">鍛治町酒場 神田店</div>
+            <div style="color: #666; font-size: 11px;">
+                ${currentLanguage === 'ja' ? '期間:' : '期间:'} ${startDateStr} - ${endDateStr}
+            </div>
+        </div>
+        <table class="schedule-table">
+            <thead>
+                <tr>
+                    <th style="width: 100px;">${currentLanguage === 'ja' ? 'スタッフ' : '员工'}</th>
+    `;
+    
+    // Day headers
+    const dayNames = currentLanguage === 'ja' 
+        ? ['月', '火', '水', '木', '金', '土', '日']
+        : ['一', '二', '三', '四', '五', '六', '日'];
+    
+    days.forEach((day, index) => {
+        const date = new Date(day.dateString);
+        const month = date.getMonth() + 1;
+        const dayNum = date.getDate();
+        tableHTML += `
+            <th style="min-width: 50px;">
+                <div style="font-weight: bold;">${dayNames[index]}</div>
+                <div style="font-size: 9px; color: #666;">${month}/${dayNum}</div>
+            </th>
+        `;
+    });
+    
+    tableHTML += `</tr></thead><tbody>`;
+    
+    // Schedule data
+    const schedulesByEmployee = {};
+    weekSchedule.forEach(schedule => {
+        if (schedule && schedule.employeeId) {
+            if (!schedulesByEmployee[schedule.employeeId]) {
+                schedulesByEmployee[schedule.employeeId] = {};
+            }
+            schedulesByEmployee[schedule.employeeId][schedule.date] = schedule;
+        }
+    });
+    
+    // Employee rows
+    employees.forEach(employee => {
+        const employeeSchedules = schedulesByEmployee[employee.id] || {};
+        const weeklyHours = calculateWeeklyHours(employee.id);
+        
+        // Position display
+        const positionDisplay = currentLanguage === 'ja' 
+            ? (employee.position === '厨房区' ? '厨房' : 'フロント')
+            : (employee.position === '厨房区' ? '厨房' : '前台');
+        
+        tableHTML += `
+            <tr>
+                <td style="font-weight: bold; text-align: left; padding-left: 5px;">
+                    <div style="font-size: 10px;">${employee.name}</div>
+                    <div style="font-size: 8px; color: #666;">${positionDisplay}</div>
+                    <div style="font-size: 8px; color: #2563eb; font-weight: bold;">${weeklyHours}h</div>
+                </td>
+        `;
+        
+        // Day cells
+        days.forEach(day => {
+            const schedule = employeeSchedules[day.dateString];
+            let cellClass = 'empty-cell';
+            let cellContent = '<div style="font-size: 9px; color: #cbd5e1;">-</div>';
+            
+            if (schedule) {
+                if (schedule.isDayOff) {
+                    cellClass = 'rest-cell';
+                    cellContent = `<div style="font-size: 9px; font-weight: bold;">${currentLanguage === 'ja' ? '休' : '休'}</div>`;
+                } else {
+                    cellClass = 'work-cell';
+                    const hours = calculateShiftHours(schedule.startTime, schedule.endTime);
+                    cellContent = `
+                        <div class="time-display">
+                            <div>${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}</div>
+                            <div>${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}</div>
+                            <div style="font-weight: bold;">${hours}h</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            tableHTML += `<td class="${cellClass}">${cellContent}</td>`;
+        });
+        
+        tableHTML += `</tr>`;
+    });
+    
+    tableHTML += `</tbody></table>`;
+    
+    // Create print window
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${currentLanguage === 'ja' ? '勤務表' : '排班表'}</title>
+                <meta charset="UTF-8">
+            </head>
+            <body>
+                ${tableHTML}
+                <div style="text-align: center; margin-top: 20px; color: #999; font-size: 9px;">
+                    ${currentLanguage === 'ja' ? '印刷日:' : '打印日期:'} ${new Date().toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN')}
+                </div>
+                <script>
+                    setTimeout(() => {
+                        window.print();
+                        setTimeout(() => {
+                            window.close();
+                        }, 500);
+                    }, 500);
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+}
+
 // ==================== SETUP EVENT LISTENERS ====================
 function setupEventListeners() {
     // Language switch button
@@ -1857,8 +2299,16 @@ function setupEventListeners() {
                     }
                     break;
                 case 'p':
+                    // Ctrl+P for print
                     if (selectedEmployee) {
-                        printEmployeeSchedule();
+                        printSchedule();
+                        event.preventDefault();
+                    }
+                    break;
+                case 'c':
+                    // Ctrl+C for copy
+                    if (selectedEmployee) {
+                        copyScheduleAsText();
                         event.preventDefault();
                     }
                     break;
@@ -1869,6 +2319,7 @@ function setupEventListeners() {
             }
         }
         
+        // Escape key to close modal
         if (event.key === 'Escape') {
             const openModal = document.querySelector('.modal[style*="display: flex"]');
             if (openModal) {
