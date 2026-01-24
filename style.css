@@ -5,21 +5,25 @@
     --primary-light: #dbeafe;
     --primary-dark: #1e40af;
     
-    /* Secondary Colors */
-    --secondary: #7c3aed;
-    --secondary-light: #ede9fe;
+    /* Secondary Colors - Màu xanh ngọc */
+    --secondary: #0d9488;
+    --secondary-light: #ccfbf1;
     
-    /* Success Colors */
+    /* Success Colors - Màu xanh lá */
     --success: #10b981;
     --success-light: #d1fae5;
     
-    /* Warning Colors */
+    /* Warning Colors - Màu cam */
     --warning: #f59e0b;
     --warning-light: #fef3c7;
     
-    /* Danger Colors */
+    /* Danger Colors - Màu đỏ */
     --danger: #ef4444;
     --danger-light: #fee2e2;
+    
+    /* Info Colors - Màu tím */
+    --info: #8b5cf6;
+    --info-light: #ede9fe;
     
     /* Neutral Colors */
     --light: #f8fafc;
@@ -98,13 +102,13 @@ body {
 /* Desktop: Tăng kích thước và tối ưu cho màn hình lớn */
 @media (min-width: 768px) {
     .app {
-        max-width: 1200px; /* Tăng từ 768px lên 1200px */
+        max-width: 1200px;
         margin: 20px auto;
         border-radius: var(--border-radius-lg);
         box-shadow: var(--shadow-lg);
         min-height: calc(100vh - 40px);
         overflow: hidden;
-        max-height: none; /* Bỏ giới hạn chiều cao */
+        max-height: none;
     }
     
     body {
@@ -114,13 +118,6 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-}
-
-/* Tối ưu cho màn hình rất lớn */
-@media (min-width: 1400px) {
-    .app {
-        max-width: 1400px;
     }
 }
 
@@ -138,28 +135,61 @@ body {
 .header-content {
     display: flex;
     align-items: center;
-    justify-content: space-between; /* Thay đổi từ center thành space-between */
+    justify-content: space-between;
     margin-bottom: 8px;
-    position: relative;
 }
 
 .header h1 {
-    font-size: 1.5rem; /* Tăng kích thước chữ cho desktop */
+    font-size: 1.5rem;
     font-weight: 700;
     display: flex;
     align-items: center;
     gap: 12px;
     letter-spacing: -0.025em;
-    text-align: left; /* Thay đổi từ center thành left */
     flex: 1;
 }
 
-@media (min-width: 768px) {
-    .header h1 {
-        font-size: 1.75rem;
-    }
+/* Header right section */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
 }
 
+/* Language switcher */
+.language-switcher {
+    position: static;
+    transform: none;
+    margin: 0;
+}
+
+.lang-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.lang-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.lang-btn i {
+    font-size: 16px;
+}
+
+/* Connection status */
 .connection-status {
     display: flex;
     align-items: center;
@@ -170,22 +200,23 @@ body {
     background: rgba(255, 255, 255, 0.15);
     backdrop-filter: blur(10px);
     font-weight: 500;
-    position: static; /* Bỏ absolute positioning */
-    transform: none; /* Bỏ transform */
-    margin-left: auto; /* Đẩy về bên phải */
+}
+
+.connection-status.connected {
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.connection-status.disconnected {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .current-date {
     text-align: center;
-    font-size: 0.95rem; /* Tăng kích thước chữ */
+    font-size: 0.95rem;
     opacity: 0.9;
     font-weight: 500;
-}
-
-@media (min-width: 768px) {
-    .current-date {
-        font-size: 1rem;
-    }
 }
 
 /* ===== NAVIGATION ===== */
@@ -202,7 +233,7 @@ body {
 
 .nav-btn {
     flex: 1;
-    padding: 16px 12px; /* Tăng padding cho desktop */
+    padding: 16px 12px;
     border: none;
     background: none;
     display: flex;
@@ -210,20 +241,12 @@ body {
     align-items: center;
     gap: 8px;
     color: var(--gray-500);
-    font-size: 0.85rem; /* Tăng kích thước chữ */
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all var(--transition-fast);
     border-bottom: 3px solid transparent;
     font-weight: 500;
-    min-height: 80px; /* Tăng chiều cao */
-}
-
-@media (min-width: 768px) {
-    .nav-btn {
-        padding: 18px 16px;
-        font-size: 0.9rem;
-        min-height: 85px;
-    }
+    min-height: 80px;
 }
 
 .nav-btn.active {
@@ -238,18 +261,12 @@ body {
 }
 
 .nav-btn i {
-    font-size: 1.3rem; /* Tăng kích thước icon */
-}
-
-@media (min-width: 768px) {
-    .nav-btn i {
-        font-size: 1.5rem;
-    }
+    font-size: 1.3rem;
 }
 
 /* ===== MAIN CONTENT ===== */
 .main-content {
-    padding: 20px; /* Tăng padding */
+    padding: 20px;
     overflow-y: auto;
     flex: 1;
     -webkit-overflow-scrolling: touch;
@@ -273,25 +290,19 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px; /* Tăng margin */
+    margin-bottom: 24px;
     flex-wrap: wrap;
     gap: 16px;
 }
 
 .view-header h2 {
-    font-size: 1.5rem; /* Tăng kích thước chữ */
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--dark);
     display: flex;
     align-items: center;
     gap: 12px;
     letter-spacing: -0.025em;
-}
-
-@media (min-width: 768px) {
-    .view-header h2 {
-        font-size: 1.75rem;
-    }
 }
 
 .view-actions {
@@ -301,7 +312,7 @@ body {
 }
 
 .btn-icon {
-    width: 48px; /* Tăng kích thước */
+    width: 48px;
     height: 48px;
     border-radius: 50%;
     border: 1px solid var(--border);
@@ -339,7 +350,7 @@ body {
 
 .search-box input {
     width: 100%;
-    padding: 16px 20px 16px 52px; /* Tăng padding */
+    padding: 16px 20px 16px 52px;
     border: 2px solid var(--border);
     border-radius: var(--border-radius);
     font-size: 1rem;
@@ -370,7 +381,7 @@ body {
 }
 
 .filter-btn {
-    padding: 12px 20px; /* Tăng padding */
+    padding: 12px 20px;
     border: 2px solid var(--border);
     border-radius: 20px;
     background: white;
@@ -381,7 +392,7 @@ body {
     white-space: nowrap;
     transition: all var(--transition);
     flex-shrink: 0;
-    min-width: 90px; /* Tăng chiều rộng tối thiểu */
+    min-width: 90px;
     text-align: center;
 }
 
@@ -400,21 +411,20 @@ body {
 /* ===== EMPLOYEE CARDS ===== */
 .employee-cards {
     display: grid;
-    grid-template-columns: 1fr; /* Mặc định 1 cột */
+    grid-template-columns: 1fr;
     gap: 16px;
 }
 
-/* Desktop: 2-3 cột tùy theo màn hình */
 @media (min-width: 768px) {
     .employee-cards {
-        grid-template-columns: repeat(2, 1fr); /* 2 cột trên tablet */
+        grid-template-columns: repeat(2, 1fr);
         gap: 20px;
     }
 }
 
 @media (min-width: 1024px) {
     .employee-cards {
-        grid-template-columns: repeat(3, 1fr); /* 3 cột trên desktop */
+        grid-template-columns: repeat(3, 1fr);
         gap: 24px;
     }
 }
@@ -423,7 +433,7 @@ body {
     background: white;
     border: 2px solid var(--border);
     border-radius: var(--border-radius);
-    padding: 20px; /* Tăng padding */
+    padding: 20px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -440,7 +450,7 @@ body {
 }
 
 .employee-avatar {
-    width: 60px; /* Tăng kích thước */
+    width: 60px;
     height: 60px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -448,7 +458,7 @@ body {
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 1.3rem; /* Tăng kích thước chữ */
+    font-size: 1.3rem;
     font-weight: 700;
     flex-shrink: 0;
     box-shadow: var(--shadow-sm);
@@ -461,7 +471,7 @@ body {
 
 .employee-name {
     font-weight: 700;
-    font-size: 1.1rem; /* Tăng kích thước chữ */
+    font-size: 1.1rem;
     color: var(--dark);
     margin-bottom: 8px;
     white-space: nowrap;
@@ -471,13 +481,13 @@ body {
 }
 
 .employee-position {
-    font-size: 0.85rem; /* Tăng kích thước chữ */
+    font-size: 0.85rem;
     color: var(--gray-600);
     display: inline-flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 12px;
-    padding: 8px 16px; /* Tăng padding */
+    padding: 8px 16px;
     background: var(--gray-50);
     border-radius: 20px;
     width: fit-content;
@@ -485,13 +495,9 @@ body {
     font-weight: 500;
 }
 
-.employee-card:hover .employee-position {
-    transform: scale(1.05);
-}
-
 .employee-position.front-desk {
-    color: var(--primary);
-    background: var(--primary-light);
+    color: var(--info);
+    background: var(--info-light);
 }
 
 .employee-position.kitchen {
@@ -509,7 +515,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.85rem; /* Tăng kích thước chữ */
+    font-size: 0.85rem;
     color: var(--gray-500);
     transition: all var(--transition);
 }
@@ -544,9 +550,9 @@ body {
 }
 
 .week-nav span {
-    font-size: 1rem; /* Tăng kích thước chữ */
+    font-size: 1rem;
     color: var(--dark);
-    min-width: 140px; /* Tăng chiều rộng tối thiểu */
+    min-width: 140px;
     text-align: center;
     font-weight: 600;
 }
@@ -556,31 +562,19 @@ body {
     border-radius: var(--border-radius);
     border: 1px solid var(--border);
     overflow: hidden;
-    max-height: none; /* Bỏ giới hạn chiều cao */
+    max-height: none;
     position: relative;
-}
-
-@media (min-width: 768px) {
-    .weekly-schedule-container {
-        max-height: calc(100vh - 250px); /* Giới hạn hợp lý hơn */
-    }
 }
 
 .weekly-schedule {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    max-height: none; /* Bỏ giới hạn chiều cao */
-}
-
-@media (min-width: 768px) {
-    .weekly-schedule {
-        max-height: calc(100vh - 250px);
-    }
+    max-height: none;
 }
 
 .week-header {
     display: grid;
-    grid-template-columns: 150px repeat(7, 1fr); /* Tăng chiều rộng cột đầu tiên */
+    grid-template-columns: 150px repeat(7, 1fr);
     background: var(--primary-light);
     border-bottom: 1px solid var(--border);
     position: sticky;
@@ -591,9 +585,9 @@ body {
 }
 
 .week-header-cell {
-    padding: 16px 8px; /* Tăng padding */
+    padding: 16px 8px;
     text-align: center;
-    font-size: 0.9rem; /* Tăng kích thước chữ */
+    font-size: 0.9rem;
     font-weight: 600;
     color: var(--dark);
     border-right: 1px solid var(--border);
@@ -602,7 +596,7 @@ body {
 
 .week-header-cell:first-child {
     text-align: left;
-    padding-left: 20px; /* Tăng padding */
+    padding-left: 20px;
 }
 
 .week-header-cell:last-child {
@@ -611,10 +605,10 @@ body {
 
 .week-row {
     display: grid;
-    grid-template-columns: 150px repeat(7, 1fr); /* Tăng chiều rộng cột đầu tiên */
+    grid-template-columns: 150px repeat(7, 1fr);
     border-bottom: 1px solid var(--border);
     transition: all var(--transition-fast);
-    min-height: 100px; /* Tăng chiều cao */
+    min-height: 100px;
 }
 
 .week-row:hover {
@@ -626,17 +620,17 @@ body {
 }
 
 .week-cell {
-    padding: 12px 8px; /* Tăng padding */
+    padding: 12px 8px;
     border-right: 1px solid var(--border);
     position: relative;
-    min-height: 100px; /* Tăng chiều cao */
+    min-height: 100px;
 }
 
 .week-cell:first-child {
     font-weight: 600;
-    font-size: 0.95rem; /* Tăng kích thước chữ */
+    font-size: 0.95rem;
     background: var(--gray-50);
-    padding-left: 20px; /* Tăng padding */
+    padding-left: 20px;
     display: flex;
     align-items: flex-start;
     flex-direction: column;
@@ -658,13 +652,13 @@ body {
 
 .day-schedule-item {
     position: absolute;
-    top: 6px; /* Tăng khoảng cách */
+    top: 6px;
     left: 6px;
     right: 6px;
     bottom: 6px;
     border-radius: var(--border-radius-sm);
-    padding: 10px; /* Tăng padding */
-    font-size: 0.85rem; /* Tăng kích thước chữ */
+    padding: 10px;
+    font-size: 0.85rem;
     line-height: 1.3;
     cursor: pointer;
     transition: all var(--transition);
@@ -707,7 +701,7 @@ body {
     background: linear-gradient(135deg, rgba(226, 232, 240, 0.3), rgba(226, 232, 240, 0.4));
     border: 1px dashed var(--border);
     color: var(--gray-400);
-    font-size: 0.75rem; /* Tăng kích thước chữ */
+    font-size: 0.75rem;
 }
 
 .day-schedule-item.empty:hover {
@@ -719,7 +713,7 @@ body {
 
 .day-time {
     font-weight: 700;
-    font-size: 0.75rem; /* Tăng kích thước chữ */
+    font-size: 0.75rem;
     margin-top: 4px;
     letter-spacing: -0.025em;
 }
@@ -728,7 +722,7 @@ body {
 .schedule-form {
     background: white;
     border-radius: var(--border-radius);
-    padding: 24px; /* Tăng padding */
+    padding: 24px;
     border: 1px solid var(--border);
     box-shadow: var(--shadow-sm);
 }
@@ -741,12 +735,12 @@ body {
 }
 
 .form-group {
-    margin-bottom: 24px; /* Tăng margin */
+    margin-bottom: 24px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 12px; /* Tăng margin */
+    margin-bottom: 12px;
     font-size: 0.9rem;
     font-weight: 600;
     color: var(--dark);
@@ -757,7 +751,7 @@ body {
 
 .select-input, .input-field {
     width: 100%;
-    padding: 14px 16px; /* Tăng padding */
+    padding: 14px 16px;
     border: 2px solid var(--border);
     border-radius: var(--border-radius-sm);
     font-size: 1rem;
@@ -790,48 +784,48 @@ body {
 .time-range-group {
     display: flex;
     flex-direction: column;
-    gap: 16px; /* Tăng gap */
+    gap: 16px;
 }
 
 .time-range-inputs {
     display: flex;
     align-items: center;
-    gap: 16px; /* Tăng gap */
+    gap: 16px;
 }
 
 .time-group {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    gap: 12px; /* Tăng gap */
+    gap: 12px;
     align-items: center;
 }
 
 .time-separator {
     color: var(--gray-500);
     font-weight: 600;
-    min-width: 32px; /* Tăng chiều rộng */
+    min-width: 32px;
     text-align: center;
-    font-size: 1rem; /* Tăng kích thước chữ */
+    font-size: 1rem;
 }
 
 .quick-time-buttons {
     display: flex;
-    gap: 10px; /* Tăng gap */
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .time-preset {
-    padding: 10px 16px; /* Tăng padding */
+    padding: 10px 16px;
     border: 1px solid var(--border);
     border-radius: 20px;
     background: var(--gray-50);
     color: var(--gray-600);
-    font-size: 0.9rem; /* Tăng kích thước chữ */
+    font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition);
     flex: 1;
-    min-width: 90px; /* Tăng chiều rộng tối thiểu */
+    min-width: 90px;
     text-align: center;
 }
 
@@ -844,19 +838,19 @@ body {
 
 .type-selector {
     display: flex;
-    gap: 16px; /* Tăng gap */
+    gap: 16px;
 }
 
 .type-btn {
     flex: 1;
-    padding: 20px 16px; /* Tăng padding */
+    padding: 20px 16px;
     border: 2px solid var(--border);
     border-radius: var(--border-radius-sm);
     background: white;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px; /* Tăng gap */
+    gap: 12px;
     cursor: pointer;
     transition: all var(--transition);
 }
@@ -876,14 +870,14 @@ body {
 }
 
 .type-btn i {
-    font-size: 1.5rem; /* Tăng kích thước icon */
+    font-size: 1.5rem;
 }
 
 .action-buttons {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 12px; /* Tăng gap */
-    margin-top: 32px; /* Tăng margin */
+    gap: 12px;
+    margin-top: 32px;
 }
 
 @media (min-width: 480px) {
@@ -894,10 +888,10 @@ body {
 }
 
 .btn-primary, .btn-secondary {
-    padding: 16px; /* Tăng padding */
+    padding: 16px;
     border: none;
     border-radius: var(--border-radius-sm);
-    font-size: 1rem; /* Tăng kích thước chữ */
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -919,10 +913,6 @@ body {
 .btn-primary:hover, .btn-primary:active {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-}
-
-.btn-primary:active {
-    transform: translateY(0);
 }
 
 .btn-secondary {
@@ -959,7 +949,7 @@ body {
     right: 0;
     background: white;
     border-top: 1px solid var(--border);
-    padding: 12px 20px; /* Tăng padding */
+    padding: 12px 20px;
     display: flex;
     justify-content: space-around;
     align-items: center;
@@ -977,12 +967,12 @@ body {
     background: none;
     border: none;
     color: var(--gray-600);
-    font-size: 0.85rem; /* Tăng kích thước chữ */
+    font-size: 0.85rem;
     cursor: pointer;
-    padding: 8px 12px; /* Tăng padding */
+    padding: 8px 12px;
     transition: all var(--transition-fast);
     border-radius: var(--border-radius-sm);
-    min-width: 70px; /* Tăng chiều rộng tối thiểu */
+    min-width: 70px;
     font-weight: 500;
 }
 
@@ -993,7 +983,7 @@ body {
 }
 
 .quick-action i {
-    font-size: 1.3rem; /* Tăng kích thước icon */
+    font-size: 1.3rem;
 }
 
 /* ===== MODALS ===== */
@@ -1008,7 +998,7 @@ body {
     z-index: 1100;
     align-items: center;
     justify-content: center;
-    padding: 20px; /* Tăng padding */
+    padding: 20px;
     animation: fadeIn 0.3s;
 }
 
@@ -1016,8 +1006,8 @@ body {
     background: white;
     border-radius: var(--border-radius-lg);
     width: 100%;
-    max-width: 600px; /* Tăng max-width */
-    max-height: 85vh; /* Tăng chiều cao tối đa */
+    max-width: 600px;
+    max-height: 85vh;
     overflow-y: auto;
     animation: slideUp 0.3s ease;
     box-shadow: var(--shadow-lg);
@@ -1030,7 +1020,7 @@ body {
 }
 
 .modal-header {
-    padding: 20px; /* Tăng padding */
+    padding: 20px;
     border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
@@ -1043,7 +1033,7 @@ body {
 }
 
 .modal-header h3 {
-    font-size: 1.3rem; /* Tăng kích thước chữ */
+    font-size: 1.3rem;
     font-weight: 700;
     color: var(--dark);
     display: flex;
@@ -1053,7 +1043,7 @@ body {
 }
 
 .modal-close {
-    width: 40px; /* Tăng kích thước */
+    width: 40px;
     height: 40px;
     border-radius: 50%;
     border: 1px solid var(--border);
@@ -1075,20 +1065,20 @@ body {
 }
 
 .modal-body {
-    padding: 20px; /* Tăng padding */
+    padding: 20px;
 }
 
 /* Employee Detail in Modal */
 .employee-detail-info {
     display: flex;
     flex-direction: column;
-    gap: 24px; /* Tăng gap */
+    gap: 24px;
 }
 
 .employee-basic {
     background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
     border-radius: var(--border-radius);
-    padding: 20px; /* Tăng padding */
+    padding: 20px;
     border: 1px solid var(--border);
 }
 
@@ -1096,7 +1086,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0; /* Tăng padding */
+    padding: 12px 0;
     border-bottom: 1px solid rgba(0,0,0,0.05);
     transition: all var(--transition-fast);
 }
@@ -1107,7 +1097,7 @@ body {
 
 .info-row .label {
     color: var(--gray-600);
-    font-size: 0.9rem; /* Tăng kích thước chữ */
+    font-size: 0.9rem;
     font-weight: 500;
     display: flex;
     gap: 6px;
@@ -1116,15 +1106,15 @@ body {
 .info-row .value {
     font-weight: 700;
     color: var(--dark);
-    font-size: 1rem; /* Tăng kích thước chữ */
+    font-size: 1rem;
 }
 
 .week-summary {
-    margin-top: 16px; /* Tăng margin */
+    margin-top: 16px;
 }
 
 .week-summary h4 {
-    font-size: 1.1rem; /* Tăng kích thước chữ */
+    font-size: 1.1rem;
     margin-bottom: 16px;
     color: var(--dark);
     display: flex;
@@ -1136,14 +1126,14 @@ body {
 .week-days {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 8px; /* Tăng gap */
+    gap: 8px;
 }
 
 .week-day {
     text-align: center;
-    padding: 14px 8px; /* Tăng padding */
+    padding: 14px 8px;
     border-radius: var(--border-radius-sm);
-    font-size: 0.85rem; /* Tăng kích thước chữ */
+    font-size: 0.85rem;
     background: var(--gray-50);
     transition: all var(--transition-fast);
     cursor: default;
@@ -1165,17 +1155,17 @@ body {
 .modal-actions {
     display: flex;
     flex-direction: column;
-    gap: 12px; /* Tăng gap */
-    margin-top: 24px; /* Tăng margin */
+    gap: 12px;
+    margin-top: 24px;
 }
 
 .btn-action {
-    padding: 16px; /* Tăng padding */
+    padding: 16px;
     border: 2px solid var(--border);
     border-radius: var(--border-radius-sm);
     background: white;
     color: var(--dark);
-    font-size: 1rem; /* Tăng kích thước chữ */
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -1208,7 +1198,7 @@ body {
 .split-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px; /* Tăng gap */
+    gap: 12px;
     width: 100%;
 }
 
@@ -1216,25 +1206,25 @@ body {
     margin: 0;
     width: 100%;
     font-size: 0.9rem;
-    padding: 14px 8px; /* Tăng padding */
+    padding: 14px 8px;
 }
 
 /* Position Select */
 .position-select {
     display: flex;
-    gap: 16px; /* Tăng gap */
+    gap: 16px;
 }
 
 .position-option {
     flex: 1;
-    padding: 24px 16px; /* Tăng padding */
+    padding: 24px 16px;
     border: 2px solid var(--border);
     border-radius: var(--border-radius);
     background: white;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px; /* Tăng gap */
+    gap: 12px;
     cursor: pointer;
     transition: all var(--transition);
 }
@@ -1254,15 +1244,15 @@ body {
 }
 
 .position-option i {
-    font-size: 2rem; /* Tăng kích thước icon */
+    font-size: 2rem;
 }
 
 /* Quick Week Modal */
 .weekdays-selector {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 8px; /* Tăng gap */
-    margin-bottom: 16px; /* Tăng margin */
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
 .weekday-btn {
@@ -1270,14 +1260,14 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 12px 6px; /* Tăng padding */
+    padding: 12px 6px;
     border: 2px solid var(--border);
     border-radius: var(--border-radius-sm);
     background: white;
     text-align: center;
     cursor: pointer;
     transition: all var(--transition);
-    min-height: 70px; /* Tăng chiều cao tối thiểu */
+    min-height: 70px;
 }
 
 .weekday-btn:hover, .weekday-btn:active {
@@ -1305,23 +1295,23 @@ body {
 
 .quick-day-buttons {
     display: flex;
-    gap: 10px; /* Tăng gap */
-    margin-top: 16px; /* Tăng margin */
+    gap: 10px;
+    margin-top: 16px;
     flex-wrap: wrap;
 }
 
 .day-preset {
     flex: 1;
-    padding: 12px 16px; /* Tăng padding */
+    padding: 12px 16px;
     border: 1px solid var(--border);
     border-radius: 20px;
     background: var(--gray-50);
     color: var(--gray-600);
-    font-size: 0.9rem; /* Tăng kích thước chữ */
+    font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition);
-    min-width: 120px; /* Tăng chiều rộng tối thiểu */
+    min-width: 120px;
     text-align: center;
 }
 
@@ -1332,601 +1322,21 @@ body {
     transform: translateY(-2px);
 }
 
-/* Rest Days Modal Specific */
-.rest-days-options {
-    margin-bottom: 20px; /* Tăng margin */
-}
-
-/* Export Options */
-.export-options {
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* Tăng gap */
-}
-
-.export-option {
-    display: flex;
-    align-items: center;
-    gap: 16px; /* Tăng gap */
-    padding: 20px; /* Tăng padding */
-    border: 2px solid var(--border);
-    border-radius: var(--border-radius);
-    background: white;
-    cursor: pointer;
-    transition: all var(--transition);
-    text-align: left;
-}
-
-.export-option:hover, .export-option:active {
-    border-color: var(--primary);
-    background: linear-gradient(135deg, var(--primary-light), white);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
-}
-
-.export-icon {
-    width: 50px; /* Tăng kích thước */
-    height: 50px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-light), var(--primary));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.5rem; /* Tăng kích thước icon */
-    box-shadow: var(--shadow-sm);
-}
-
-.export-info {
-    flex: 1;
-}
-
-.export-info strong {
-    display: block;
-    font-size: 1.1rem; /* Tăng kích thước chữ */
-    color: var(--dark);
-    margin-bottom: 6px;
-    font-weight: 700;
-}
-
-.export-info small {
-    color: var(--gray-600);
-    font-size: 0.9rem; /* Tăng kích thước chữ */
-    line-height: 1.4;
-}
-
-/* Today Schedule */
-.today-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* Tăng gap */
-}
-
-.today-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px; /* Tăng padding */
-    background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border);
-    transition: all var(--transition);
-}
-
-.today-item.work {
-    border-left: 4px solid var(--success);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
-}
-
-.today-item.rest {
-    border-left: 4px solid var(--warning);
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
-}
-
-.today-item:hover, .today-item:active {
-    transform: translateX(4px);
-    box-shadow: var(--shadow);
-}
-
-/* Stats Grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px; /* Tăng gap */
-}
-
-.stat-card {
-    padding: 24px 16px; /* Tăng padding */
-    background: linear-gradient(135deg, var(--gray-50), var(--gray-100));
-    border-radius: var(--border-radius);
-    text-align: center;
-    transition: all var(--transition);
-    border: 1px solid var(--border);
-}
-
-.stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.stat-card h4 {
-    font-size: 2rem; /* Tăng kích thước chữ */
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 8px;
-    letter-spacing: -0.05em;
-}
-
-.stat-card p {
-    color: var(--gray-600);
-    font-size: 0.9rem; /* Tăng kích thước chữ */
-    font-weight: 500;
-}
-
-/* Edit Schedule */
-.edit-day-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); /* Tăng min-width */
-    gap: 12px; /* Tăng gap */
-}
-
-.edit-day-card {
-    padding: 16px; /* Tăng padding */
-    border: 2px solid var(--border);
-    border-radius: var(--border-radius);
-    text-align: center;
-    cursor: pointer;
-    transition: all var(--transition);
-}
-
-.edit-day-card:hover, .edit-day-card:active {
-    border-color: var(--primary);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
-}
-
-.edit-day-card.active {
-    border-color: var(--primary);
-    background: linear-gradient(135deg, var(--primary-light), white);
-    font-weight: 600;
-}
-
-.day-label {
-    font-size: 0.9rem; /* Tăng kích thước chữ */
-    color: var(--gray-600);
-    margin-bottom: 6px;
-}
-
-.day-date {
-    font-weight: 700;
-    margin-bottom: 8px;
-    color: var(--dark);
-}
-
-/* Full Width Button */
-.full-width {
-    width: 100%;
-}
-
-/* ===== PRINT OPTIMIZATION ===== */
-@media print {
-    body * {
-        visibility: hidden;
-    }
-    
-    .app, .app * {
-        visibility: visible;
-    }
-    
-    .app {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        max-width: 100%;
-        margin: 0;
-        padding: 0;
-        box-shadow: none;
-        border-radius: 0;
-    }
-    
-    .no-print {
-        display: none !important;
-    }
-    
-    .print-header {
-        display: block !important;
-        text-align: center;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #2563eb;
-    }
-    
-    .company-name {
-        font-size: 22px !important;
-        color: #2563eb;
-        font-weight: 800;
-        margin-bottom: 5px;
-    }
-    
-    .print-date {
-        font-size: 14px;
-        color: #666;
-        font-weight: 600;
-    }
-    
-    .weekly-schedule-container {
-        max-height: none !important;
-        overflow: visible !important;
-        border: none !important;
-    }
-    
-    .weekly-schedule {
-        max-height: none !important;
-        overflow: visible !important;
-    }
-    
-    .week-header {
-        position: static !important;
-        background: #e6f0ff !important;
-    }
-    
-    .week-cell:first-child {
-        position: static !important;
-    }
-    
-    .day-schedule-item {
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
-        right: auto !important;
-        bottom: auto !important;
-        margin: 2px;
-    }
-    
-    .compact-time {
-        font-size: 9px;
-        line-height: 1;
-    }
-    
-    .week-row {
-        min-height: auto;
-        page-break-inside: avoid;
-    }
-    
-    .week-cell {
-        min-height: auto;
-        padding: 8px 4px;
-    }
-    
-    .week-cell:first-child {
-        min-height: auto;
-    }
-    
-    /* スマートフォン印刷用 */
-    @page {
-        margin: 0.5cm;
-        size: auto;
-    }
-    
-    body {
-        background: white !important;
-        padding: 0 !important;
-    }
-    
-    .main-content {
-        padding: 10px !important;
-        overflow: visible !important;
-    }
-    
-    .view-header h2 {
-        font-size: 18px;
-        margin-bottom: 10px;
-    }
-    
-    /* コンパクトな表示 */
-    .employee-name {
-        font-size: 12px;
-    }
-    
-    .employee-position {
-        font-size: 10px;
-        padding: 2px 6px;
-    }
-    
-    .stat-item {
-        font-size: 10px;
-    }
-}
-
-/* ===== RESPONSIVE ADJUSTMENTS ===== */
-
-/* Mobile styles */
-@media (max-width: 767px) {
-    html {
-        font-size: 14px;
-    }
-    
-    .employee-cards {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .weekly-schedule-container {
-        max-height: calc(100vh - 180px);
-    }
-    
-    .weekly-schedule {
-        max-height: calc(100vh - 180px);
-    }
-    
-    .week-header, .week-row {
-        grid-template-columns: 90px repeat(7, 1fr);
-    }
-    
-    .week-cell:first-child {
-        font-size: 0.75rem;
-        padding-left: 10px;
-    }
-    
-    .day-schedule-item {
-        font-size: 0.65rem;
-        padding: 4px;
-    }
-    
-    .time-group {
-        grid-template-columns: 1fr auto 1fr;
-    }
-    
-    .type-btn {
-        padding: 14px 10px;
-    }
-    
-    .type-btn i {
-        font-size: 1.1rem;
-    }
-    
-    .header-content {
-        padding-right: 0;
-    }
-    
-    .header h1 {
-        justify-content: center;
-        text-align: center;
-        flex: none;
-    }
-    
-    .connection-status {
-        position: absolute;
-        right: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-}
-
-@media (max-width: 480px) {
-    .header h1 {
-        font-size: 1rem;
-    }
-    
-    .view-header h2 {
-        font-size: 1rem;
-    }
-    
-    .employee-avatar {
-        width: 44px;
-        height: 44px;
-        font-size: 1rem;
-    }
-    
-    .employee-name {
-        font-size: 0.9rem;
-    }
-    
-    .employee-stats {
-        gap: 8px;
-    }
-    
-    .stat-item {
-        font-size: 0.65rem;
-    }
-    
-    .week-header, .week-row {
-        grid-template-columns: 80px repeat(7, 1fr);
-    }
-    
-    .week-cell:first-child {
-        width: 80px;
-        font-size: 0.7rem;
-    }
-    
-    .action-buttons {
-        grid-template-columns: 1fr;
-    }
-    
-    .btn-primary, .btn-secondary {
-        font-size: 0.9rem;
-        padding: 12px;
-    }
-    
-    .quick-actions-bar {
-        padding: 8px 12px;
-    }
-    
-    .quick-action {
-        min-width: 55px;
-        padding: 5px 6px;
-        font-size: 0.65rem;
-    }
-    
-    .quick-action i {
-        font-size: 1.1rem;
-    }
-    
-    /* モバイル向けコンパクト表示 */
-    .day-schedule-item {
-        font-size: 0.6rem;
-        padding: 2px;
-    }
-    
-    .compact-time {
-        font-size: 0.55rem;
-    }
-}
-
-/* Tablet Optimizations */
-@media (min-width: 768px) and (max-width: 1024px) {
-    .app {
-        max-width: 95%; /* Linh hoạt hơn */
-    }
-    
-    .employee-cards {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-    }
-    
-    .weekly-schedule-container {
-        max-height: 70vh;
-    }
-    
-    .weekly-schedule {
-        max-height: 70vh;
-    }
-    
-    .week-header, .week-row {
-        grid-template-columns: 120px repeat(7, 1fr);
-    }
-}
-
-/* Desktop Optimizations */
-@media (min-width: 1025px) {
-    .employee-cards {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 24px;
-    }
-    
-    .weekly-schedule-container {
-        max-height: 75vh;
-    }
-    
-    .weekly-schedule {
-        max-height: 75vh;
-    }
-    
-    .week-header, .week-row {
-        grid-template-columns: 150px repeat(7, 1fr);
-    }
-}
-
-/* Landscape Orientation Optimizations */
-@media (max-height: 600px) and (orientation: landscape) {
-    .weekly-schedule-container {
-        max-height: 50vh;
-    }
-    
-    .weekly-schedule {
-        max-height: 50vh;
-    }
-    
-    .main-content {
-        padding-bottom: 60px;
-    }
-    
-    .quick-actions-bar {
-        padding: 6px 16px;
-    }
-    
-    .nav-btn {
-        padding: 10px 8px;
-        min-height: 60px;
-        font-size: 0.65rem;
-    }
-    
-    .nav-btn i {
-        font-size: 1rem;
-    }
-}
-
-/* Loading States */
-.loading {
-    opacity: 0.7;
-    pointer-events: none;
-}
-
-/* Empty States */
-.empty-state {
-    text-align: center;
-    padding: 40px 16px;
-    color: var(--gray-500);
-}
-
-.empty-state i {
-    font-size: 2.5rem;
-    margin-bottom: 12px;
-    color: var(--gray-300);
-    opacity: 0.5;
-}
-
-.empty-state p {
-    font-size: 0.95rem;
-    margin-bottom: 6px;
-    font-weight: 500;
-    color: var(--gray-600);
-}
-
-.empty-state small {
-    font-size: 0.8rem;
-    opacity: 0.8;
-    color: var(--gray-500);
-}
-
-/* Status Colors */
-.status-work { color: var(--success); }
-.status-rest { color: var(--warning); }
-.status-none { color: var(--gray-400); }
-
-/* Scrollbar Styling */
-.weekly-schedule::-webkit-scrollbar,
-.modal-content::-webkit-scrollbar,
-.main-content::-webkit-scrollbar {
-    width: 6px; /* Tăng độ rộng */
-    height: 6px;
-}
-
-.weekly-schedule::-webkit-scrollbar-track,
-.modal-content::-webkit-scrollbar-track,
-.main-content::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.weekly-schedule::-webkit-scrollbar-thumb,
-.modal-content::-webkit-scrollbar-thumb,
-.main-content::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: 3px;
-}
-
-.weekly-schedule::-webkit-scrollbar-thumb:hover,
-.modal-content::-webkit-scrollbar-thumb:hover,
-.main-content::-webkit-scrollbar-thumb:hover {
-    background: var(--gray-400);
-}
-
-/* Toast Messages */
+/* ===== TOAST MESSAGES ===== */
 .toast-message {
     position: fixed;
     top: 80px;
-    right: 20px; /* Tăng khoảng cách */
+    right: 20px;
     background: white;
     border-radius: 12px;
-    padding: 14px 18px; /* Tăng padding */
+    padding: 14px 18px;
     box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     z-index: 2000;
     transform: translateX(400px);
     transition: transform 0.3s ease;
-    max-width: 350px; /* Tăng max-width */
+    max-width: 350px;
     border-left: 4px solid var(--primary);
-    font-size: 0.95rem; /* Tăng kích thước chữ */
+    font-size: 0.95rem;
 }
 
 .toast-message.show {
@@ -1936,11 +1346,11 @@ body {
 .toast-content {
     display: flex;
     align-items: center;
-    gap: 12px; /* Tăng gap */
+    gap: 12px;
 }
 
 .toast-message i {
-    font-size: 20px; /* Tăng kích thước icon */
+    font-size: 20px;
     flex-shrink: 0;
 }
 
@@ -1990,6 +1400,220 @@ body {
     }
 }
 
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 767px) {
+    html {
+        font-size: 14px;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .employee-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .weekly-schedule-container {
+        max-height: calc(100vh - 180px);
+    }
+    
+    .weekly-schedule {
+        max-height: calc(100vh - 180px);
+    }
+    
+    .week-header, .week-row {
+        grid-template-columns: 100px repeat(7, 1fr);
+    }
+    
+    .week-cell:first-child {
+        font-size: 0.75rem;
+        padding-left: 8px;
+        width: 100px;
+    }
+    
+    .day-schedule-item {
+        font-size: 0.65rem;
+        padding: 4px;
+    }
+    
+    .action-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn-primary, .btn-secondary {
+        font-size: 0.9rem;
+        padding: 12px;
+    }
+    
+    .quick-actions-bar {
+        padding: 8px 12px;
+    }
+    
+    .quick-action {
+        min-width: 55px;
+        padding: 5px 6px;
+        font-size: 0.65rem;
+    }
+    
+    .quick-action i {
+        font-size: 1.1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1.2rem;
+    }
+    
+    .view-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .employee-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 1rem;
+    }
+    
+    .employee-name {
+        font-size: 0.9rem;
+    }
+    
+    .employee-stats {
+        gap: 8px;
+    }
+    
+    .stat-item {
+        font-size: 0.65rem;
+    }
+    
+    .week-header, .week-row {
+        grid-template-columns: 80px repeat(7, 1fr);
+    }
+    
+    .week-cell:first-child {
+        width: 80px;
+        font-size: 0.7rem;
+    }
+    
+    .lang-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+}
+
+/* Tablet Optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .app {
+        max-width: 95%;
+    }
+    
+    .employee-cards {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+    
+    .weekly-schedule-container {
+        max-height: 70vh;
+    }
+    
+    .weekly-schedule {
+        max-height: 70vh;
+    }
+    
+    .week-header, .week-row {
+        grid-template-columns: 120px repeat(7, 1fr);
+    }
+}
+
+/* Desktop Optimizations */
+@media (min-width: 1025px) {
+    .employee-cards {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+    }
+    
+    .weekly-schedule-container {
+        max-height: 75vh;
+    }
+    
+    .weekly-schedule {
+        max-height: 75vh;
+    }
+    
+    .week-header, .week-row {
+        grid-template-columns: 150px repeat(7, 1fr);
+    }
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--gray-500);
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    color: var(--gray-300);
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--gray-600);
+}
+
+.empty-state small {
+    font-size: 0.8rem;
+    opacity: 0.8;
+    color: var(--gray-500);
+}
+
+/* Status Colors */
+.status-work { color: var(--success); }
+.status-rest { color: var(--warning); }
+.status-none { color: var(--gray-400); }
+
+/* Scrollbar Styling */
+.weekly-schedule::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar,
+.main-content::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.weekly-schedule::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track,
+.main-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.weekly-schedule::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 3px;
+}
+
+.weekly-schedule::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover,
+.main-content::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+
 /* iOS Safari Specific Optimizations */
 @supports (-webkit-touch-callout: none) {
     .btn-icon, .btn-primary, .btn-secondary, .btn-action {
@@ -2001,7 +1625,7 @@ body {
     }
     
     .select-input, .input-field {
-        font-size: 16px; /* Prevents iOS zoom on focus */
+        font-size: 16px;
     }
     
     /* Fix for iOS sticky positioning */
