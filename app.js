@@ -1893,7 +1893,7 @@ function copyScheduleAsText() {
 }
 
 // ==================== PRINT FUNCTION ====================
-function printSchedule() {
+function printEmployeeSchedule() {
     if (!selectedEmployee) {
         showMessage(currentLanguage === 'ja' ? 'スタッフを選択してください' : '请先选择员工', 'warning');
         return;
@@ -1908,25 +1908,26 @@ function printSchedule() {
     const monthlyHours = calculateMonthlyHours(selectedEmployee);
     const days = generateWeekDays(startDate);
     
-    // Create print content
+    // Create print content with optimized layout for mobile
     const printContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <title>${employee.name} ${currentLanguage === 'ja' ? 'スケジュール' : '排班表'}</title>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
                 body { 
                     font-family: 'Microsoft YaHei', 'Meiryo', sans-serif; 
                     margin: 0; 
-                    padding: 20px; 
+                    padding: 15px; 
                     background: white;
                     color: #333;
                     font-size: 12px;
                 }
                 .print-header {
                     text-align: center;
-                    margin-bottom: 20px;
+                    margin-bottom: 15px;
                     padding-bottom: 10px;
                     border-bottom: 2px solid #2563eb;
                 }
@@ -1960,40 +1961,47 @@ function printSchedule() {
                 .schedule-table {
                     width: 100%;
                     border-collapse: collapse;
-                    margin-top: 20px;
+                    margin-top: 15px;
                     font-size: 10px;
                 }
                 .schedule-table th {
                     background: #e6f0ff;
-                    padding: 8px 4px;
+                    padding: 8px 3px;
                     text-align: center;
                     border: 1px solid #ddd;
                     font-weight: bold;
                 }
                 .schedule-table td {
-                    padding: 8px 4px;
+                    padding: 6px 2px;
                     text-align: center;
                     border: 1px solid #ddd;
                     vertical-align: middle;
+                    height: 50px;
                 }
                 .work-day {
                     background: #d1fae5;
                     color: #065f46;
+                    font-size: 9px;
+                    padding: 2px;
                 }
                 .rest-day {
                     background: #fef3c7;
                     color: #92400e;
+                    font-size: 9px;
+                    padding: 2px;
                 }
                 .empty-day {
                     background: #f8fafc;
                     color: #94a3b8;
+                    font-size: 9px;
+                    padding: 2px;
                 }
                 .time-display {
-                    font-size: 9px;
+                    font-size: 8px;
                     line-height: 1.2;
                 }
                 .footer {
-                    margin-top: 30px;
+                    margin-top: 20px;
                     text-align: center;
                     color: #666;
                     font-size: 10px;
@@ -2008,10 +2016,31 @@ function printSchedule() {
                     body {
                         padding: 10px;
                     }
+                    .schedule-table {
+                        font-size: 9px;
+                    }
+                    .schedule-table td {
+                        padding: 4px 1px;
+                        height: 45px;
+                    }
+                }
+                
+                /* Mobile optimization */
+                @media (max-width: 600px) {
+                    .schedule-table {
+                        font-size: 8px;
+                    }
+                    .schedule-table th,
+                    .schedule-table td {
+                        padding: 3px 1px;
+                    }
+                    .work-day, .rest-day, .empty-day {
+                        font-size: 7px;
+                    }
                 }
             </style>
         </head>
-        <body>
+        <body class="single-employee-print">
             <div class="print-header">
                 <div class="company-name">鍛治町酒場 神田店</div>
                 <div class="employee-name">${employee.name}</div>
@@ -2025,7 +2054,7 @@ function printSchedule() {
                 </div>
             </div>
             
-            <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-around; margin-bottom: 15px;">
                 <div style="text-align: center;">
                     <div style="font-size: 14px; color: #2563eb; font-weight: bold;">${weeklyHours}</div>
                     <div style="font-size: 10px; color: #666;">${currentLanguage === 'ja' ? '今週時間' : '本周工时'}</div>
@@ -2039,11 +2068,11 @@ function printSchedule() {
             <table class="schedule-table">
                 <thead>
                     <tr>
-                        <th>${currentLanguage === 'ja' ? '曜日' : '星期'}</th>
-                        <th>${currentLanguage === 'ja' ? '日付' : '日期'}</th>
-                        <th>${currentLanguage === 'ja' ? '状態' : '状态'}</th>
-                        <th>${currentLanguage === 'ja' ? '時間' : '时间'}</th>
-                        <th>${currentLanguage === 'ja' ? '時間数' : '小时数'}</th>
+                        <th style="width: 12%;">${currentLanguage === 'ja' ? '曜日' : '星期'}</th>
+                        <th style="width: 15%;">${currentLanguage === 'ja' ? '日付' : '日期'}</th>
+                        <th style="width: 15%;">${currentLanguage === 'ja' ? '状態' : '状态'}</th>
+                        <th style="width: 30%;">${currentLanguage === 'ja' ? '時間' : '时间'}</th>
+                        <th style="width: 15%;">${currentLanguage === 'ja' ? '時間数' : '小时数'}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -2061,7 +2090,7 @@ function printSchedule() {
                             } else {
                                 statusClass = 'work-day';
                                 statusText = currentLanguage === 'ja' ? '勤務' : '工作';
-                                timeDisplay = `${schedule.startTime ? schedule.startTime.substring(0, 5) : ''} - ${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}`;
+                                timeDisplay = `${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}<br>${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}`;
                                 hours = calculateShiftHours(schedule.startTime, schedule.endTime) + 'h';
                             }
                         }
@@ -2124,42 +2153,119 @@ function printAllSchedule() {
     const weekSchedule = getWeekSchedules(startDate, endDate);
     const days = generateWeekDays(startDate);
     
-    // Date format for display
-    const dateOptions = { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit',
-        weekday: 'long'
-    };
-    
-    const startDateStr = startDate.toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', dateOptions);
-    const endDateStr = endDate.toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN', dateOptions);
-    
-    // Create compact table structure
-    let tableHTML = `
-        <style>
-            body { font-family: 'Microsoft YaHei', 'Meiryo', sans-serif; margin: 10px; font-size: 10px; }
-            .print-header { text-align: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #2563eb; }
-            .company-name { font-size: 16px; color: #2563eb; font-weight: bold; margin-bottom: 5px; }
-            .schedule-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            .schedule-table th { background: #e6f0ff; padding: 6px 3px; text-align: center; border: 1px solid #ddd; font-weight: bold; }
-            .schedule-table td { padding: 6px 3px; text-align: center; border: 1px solid #ddd; vertical-align: top; }
-            .work-cell { background: #d1fae5; color: #065f46; font-size: 9px; }
-            .rest-cell { background: #fef3c7; color: #92400e; font-size: 9px; }
-            .empty-cell { background: #f8fafc; color: #94a3b8; font-size: 9px; }
-            .time-display { font-size: 8px; line-height: 1.1; }
-            @media print { @page { margin: 0.3cm; size: landscape; } }
-        </style>
-        <div class="print-header">
-            <div class="company-name">鍛治町酒場 神田店</div>
-            <div style="color: #666; font-size: 11px;">
-                ${currentLanguage === 'ja' ? '期間:' : '期间:'} ${startDateStr} - ${endDateStr}
+    // Create print content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>${currentLanguage === 'ja' ? '週間勤務表' : '每周排班表'}</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { 
+                    font-family: 'Microsoft YaHei', 'Meiryo', sans-serif; 
+                    margin: 10px; 
+                    font-size: 10px; 
+                    background: white;
+                }
+                .print-header { 
+                    text-align: center; 
+                    margin-bottom: 15px; 
+                    padding-bottom: 10px; 
+                    border-bottom: 2px solid #2563eb; 
+                }
+                .company-name { 
+                    font-size: 16px; 
+                    color: #2563eb; 
+                    font-weight: bold; 
+                    margin-bottom: 5px; 
+                }
+                .schedule-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 15px; 
+                }
+                .schedule-table th { 
+                    background: #e6f0ff; 
+                    padding: 6px 3px; 
+                    text-align: center; 
+                    border: 1px solid #ddd; 
+                    font-weight: bold; 
+                    font-size: 9px;
+                }
+                .schedule-table td { 
+                    padding: 6px 3px; 
+                    text-align: center; 
+                    border: 1px solid #ddd; 
+                    vertical-align: top; 
+                    font-size: 8px;
+                }
+                .work-cell { 
+                    background: #d1fae5; 
+                    color: #065f46; 
+                    font-size: 8px; 
+                    padding: 2px;
+                }
+                .rest-cell { 
+                    background: #fef3c7; 
+                    color: #92400e; 
+                    font-size: 8px; 
+                    padding: 2px;
+                }
+                .empty-cell { 
+                    background: #f8fafc; 
+                    color: #94a3b8; 
+                    font-size: 8px; 
+                    padding: 2px;
+                }
+                .time-display { 
+                    font-size: 7px; 
+                    line-height: 1.1; 
+                }
+                .employee-name-cell {
+                    text-align: left;
+                    padding-left: 5px;
+                    font-weight: bold;
+                    font-size: 9px;
+                }
+                @media print { 
+                    @page { 
+                        margin: 0.3cm; 
+                        size: landscape; 
+                    } 
+                    body {
+                        padding: 5px;
+                    }
+                }
+                
+                /* Mobile optimization */
+                @media (max-width: 600px) {
+                    .schedule-table th,
+                    .schedule-table td {
+                        padding: 4px 2px;
+                        font-size: 7px;
+                    }
+                    .work-cell, .rest-cell, .empty-cell {
+                        font-size: 6px;
+                    }
+                    .time-display {
+                        font-size: 6px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <div class="company-name">鍛治町酒場 神田店</div>
+                <div style="color: #666; font-size: 11px;">
+                    ${currentLanguage === 'ja' ? '期間:' : '期间:'} ${formatDate(startDate)} - ${formatDate(endDate)}
+                </div>
             </div>
-        </div>
-        <table class="schedule-table">
-            <thead>
-                <tr>
-                    <th style="width: 100px;">${currentLanguage === 'ja' ? 'スタッフ' : '员工'}</th>
+            
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th style="width: 100px; min-width: 80px;">${currentLanguage === 'ja' ? 'スタッフ' : '员工'}</th>
     `;
     
     // Day headers
@@ -2171,15 +2277,15 @@ function printAllSchedule() {
         const date = new Date(day.dateString);
         const month = date.getMonth() + 1;
         const dayNum = date.getDate();
-        tableHTML += `
+        printContent += `
             <th style="min-width: 50px;">
-                <div style="font-weight: bold;">${dayNames[index]}</div>
-                <div style="font-size: 9px; color: #666;">${month}/${dayNum}</div>
+                <div style="font-weight: bold; font-size: 9px;">${dayNames[index]}</div>
+                <div style="font-size: 8px; color: #666;">${month}/${dayNum}</div>
             </th>
         `;
     });
     
-    tableHTML += `</tr></thead><tbody>`;
+    printContent += `</tr></thead><tbody>`;
     
     // Schedule data
     const schedulesByEmployee = {};
@@ -2202,12 +2308,12 @@ function printAllSchedule() {
             ? (employee.position === '厨房区' ? '厨房' : 'フロント')
             : (employee.position === '厨房区' ? '厨房' : '前台');
         
-        tableHTML += `
+        printContent += `
             <tr>
-                <td style="font-weight: bold; text-align: left; padding-left: 5px;">
-                    <div style="font-size: 10px;">${employee.name}</div>
-                    <div style="font-size: 8px; color: #666;">${positionDisplay}</div>
-                    <div style="font-size: 8px; color: #2563eb; font-weight: bold;">${weeklyHours}h</div>
+                <td class="employee-name-cell">
+                    <div>${employee.name}</div>
+                    <div style="font-size: 7px; color: #666;">${positionDisplay}</div>
+                    <div style="font-size: 7px; color: #2563eb; font-weight: bold;">${weeklyHours}h</div>
                 </td>
         `;
         
@@ -2215,12 +2321,12 @@ function printAllSchedule() {
         days.forEach(day => {
             const schedule = employeeSchedules[day.dateString];
             let cellClass = 'empty-cell';
-            let cellContent = '<div style="font-size: 9px; color: #cbd5e1;">-</div>';
+            let cellContent = '<div style="font-size: 7px; color: #cbd5e1;">-</div>';
             
             if (schedule) {
                 if (schedule.isDayOff) {
                     cellClass = 'rest-cell';
-                    cellContent = `<div style="font-size: 9px; font-weight: bold;">${currentLanguage === 'ja' ? '休' : '休'}</div>`;
+                    cellContent = `<div style="font-size: 8px; font-weight: bold;">${currentLanguage === 'ja' ? '休' : '休'}</div>`;
                 } else {
                     cellClass = 'work-cell';
                     const hours = calculateShiftHours(schedule.startTime, schedule.endTime);
@@ -2234,52 +2340,46 @@ function printAllSchedule() {
                 }
             }
             
-            tableHTML += `<td class="${cellClass}">${cellContent}</td>`;
+            printContent += `<td class="${cellClass}">${cellContent}</td>`;
         });
         
-        tableHTML += `</tr>`;
+        printContent += `</tr>`;
     });
     
-    tableHTML += `</tbody></table>`;
+    printContent += `</tbody></table>
+            <div style="text-align: center; margin-top: 20px; color: #999; font-size: 9px;">
+                ${currentLanguage === 'ja' ? '印刷日:' : '打印日期:'} ${new Date().toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN')}
+            </div>
+        </body>
+        </html>`;
     
     // Create print window
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>${currentLanguage === 'ja' ? '勤務表' : '排班表'}</title>
-                <meta charset="UTF-8">
-            </head>
-            <body>
-                ${tableHTML}
-                <div style="text-align: center; margin-top: 20px; color: #999; font-size: 9px;">
-                    ${currentLanguage === 'ja' ? '印刷日:' : '打印日期:'} ${new Date().toLocaleDateString(currentLanguage === 'ja' ? 'ja-JP' : 'zh-CN')}
-                </div>
-                <script>
-                    setTimeout(() => {
-                        window.print();
-                        setTimeout(() => {
-                            window.close();
-                        }, 500);
-                    }, 500);
-                </script>
-            </body>
-            </html>
-        `);
+        printWindow.document.write(printContent);
         printWindow.document.close();
+        
+        // Print after content loads
+        setTimeout(() => {
+            printWindow.print();
+            setTimeout(() => {
+                printWindow.close();
+            }, 500);
+        }, 500);
     }
 }
 
 // ==================== SETUP EVENT LISTENERS ====================
 function setupEventListeners() {
     // Language switch button
-    document.getElementById('languageSwitch').addEventListener('click', function() {
-        currentLanguage = currentLanguage === 'ja' ? 'zh' : 'ja';
-        updateLanguage();
-        localStorage.setItem('appLanguage', currentLanguage);
-    });
+    const languageSwitchBtn = document.getElementById('languageSwitch');
+    if (languageSwitchBtn) {
+        languageSwitchBtn.addEventListener('click', function() {
+            currentLanguage = currentLanguage === 'ja' ? 'zh' : 'ja';
+            updateLanguage();
+            localStorage.setItem('appLanguage', currentLanguage);
+        });
+    }
     
     // Close modal when clicking background
     document.addEventListener('click', function(event) {
@@ -2301,7 +2401,7 @@ function setupEventListeners() {
                 case 'p':
                     // Ctrl+P for print
                     if (selectedEmployee) {
-                        printSchedule();
+                        printEmployeeSchedule();
                         event.preventDefault();
                     }
                     break;
@@ -2427,14 +2527,30 @@ function showStats() {
     const container = document.getElementById('statsGrid');
     if (!container) return;
     
+    // Tính toán thời gian làm việc cả tuần
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1));
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    
+    const startStr = startOfWeek.toISOString().split('T')[0];
+    const endStr = endOfWeek.toISOString().split('T')[0];
+    
+    // Tính tổng thời gian làm việc của tất cả nhân viên trong tuần
+    let totalWeekHours = 0;
+    employees.forEach(employee => {
+        totalWeekHours += calculateWeeklyHours(employee.id);
+    });
+    
     const totalEmployees = employees.length;
     const totalSchedules = Object.keys(schedules).length;
-    const today = new Date().toISOString().split('T')[0];
-    const todayShifts = Object.values(schedules).filter(s => s && s.date === today && !s.isDayOff).length;
-    const weekHours = employees.reduce((sum, emp) => sum + calculateWeeklyHours(emp.id), 0);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayShifts = Object.values(schedules).filter(s => s && s.date === todayStr && !s.isDayOff).length;
     const monthHours = employees.reduce((sum, emp) => sum + calculateMonthlyHours(emp.id), 0);
     const frontDeskCount = employees.filter(e => e.position === '前台/服务区').length;
     const kitchenCount = employees.filter(e => e.position === '厨房区').length;
+    const avgWeekHours = Math.round((totalWeekHours / (employees.length || 1)) * 10) / 10;
     
     container.innerHTML = `
         <div class="stat-card">
@@ -2450,7 +2566,7 @@ function showStats() {
             <p>${currentLanguage === 'ja' ? '今日のシフト' : '今日班次'}</p>
         </div>
         <div class="stat-card">
-            <h4>${weekHours}h</h4>
+            <h4>${totalWeekHours}h</h4>
             <p>${currentLanguage === 'ja' ? '今週の時間' : '本周工时'}</p>
         </div>
         <div class="stat-card">
@@ -2466,7 +2582,7 @@ function showStats() {
             <p>${currentLanguage === 'ja' ? '厨房' : '厨房'}</p>
         </div>
         <div class="stat-card">
-            <h4>${Math.round(weekHours / (employees.length || 1))}h</h4>
+            <h4>${avgWeekHours}h</h4>
             <p>${currentLanguage === 'ja' ? '平均週時間' : '平均周工时'}</p>
         </div>
     `;
