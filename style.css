@@ -5,23 +5,23 @@
     --primary-light: #dbeafe;
     --primary-dark: #1e40af;
     
-    /* Secondary Colors - Màu xanh ngọc */
+    /* Secondary Colors */
     --secondary: #0d9488;
     --secondary-light: #ccfbf1;
     
-    /* Success Colors - Màu xanh lá */
+    /* Success Colors */
     --success: #10b981;
     --success-light: #d1fae5;
     
-    /* Warning Colors - Màu cam */
+    /* Warning Colors */
     --warning: #f59e0b;
     --warning-light: #fef3c7;
     
-    /* Danger Colors - Màu đỏ */
+    /* Danger Colors */
     --danger: #ef4444;
     --danger-light: #fee2e2;
     
-    /* Info Colors - Màu tím */
+    /* Info Colors */
     --info: #8b5cf6;
     --info-light: #ede9fe;
     
@@ -99,7 +99,7 @@ body {
     flex-direction: column;
 }
 
-/* Desktop: Tăng kích thước và tối ưu cho màn hình lớn */
+/* Desktop */
 @media (min-width: 768px) {
     .app {
         max-width: 1200px;
@@ -1322,6 +1322,73 @@ body {
     transform: translateY(-2px);
 }
 
+/* ===== STATS MODAL ===== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.stat-card {
+    background: var(--gray-50);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-card h4 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.stat-card p {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    font-weight: 500;
+}
+
+/* ===== TODAY MODAL ===== */
+.today-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.today-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-radius: var(--border-radius-sm);
+    background: var(--gray-50);
+    border: 1px solid var(--border);
+    transition: all var(--transition);
+}
+
+.today-item.work {
+    background: linear-gradient(135deg, var(--success-light), white);
+    border-color: var(--success-light);
+}
+
+.today-item.rest {
+    background: linear-gradient(135deg, var(--warning-light), white);
+    border-color: var(--warning-light);
+}
+
+.today-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
 /* ===== TOAST MESSAGES ===== */
 .toast-message {
     position: fixed;
@@ -1466,6 +1533,11 @@ body {
     
     .quick-action i {
         font-size: 1.1rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
 }
 
@@ -1635,5 +1707,41 @@ body {
     
     .main-nav {
         position: -webkit-sticky;
+    }
+}
+
+/* Enhanced styles for printing */
+.single-employee-print {
+    font-size: 10px !important;
+}
+
+.single-employee-print .week-row {
+    min-height: 60px !important;
+}
+
+.single-employee-print .week-cell {
+    min-height: 60px !important;
+    padding: 4px 2px !important;
+}
+
+.single-employee-print .day-schedule-item {
+    padding: 2px !important;
+    font-size: 8px !important;
+}
+
+/* Improve print layout for mobile */
+@media print and (max-width: 600px) {
+    .week-header, .week-row {
+        grid-template-columns: 80px repeat(7, 1fr) !important;
+    }
+    
+    .week-cell:first-child {
+        width: 80px !important;
+        font-size: 9px !important;
+    }
+    
+    .day-schedule-item {
+        font-size: 7px !important;
+        padding: 1px !important;
     }
 }
