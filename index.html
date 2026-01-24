@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <!-- Sửa deprecated meta tag -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,7 +17,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
     <style>
-        /* Thêm loading screen */
+        /* Loading screen */
         #loadingScreen {
             position: fixed;
             top: 0;
@@ -48,49 +47,10 @@
             to { transform: rotate(360deg); }
         }
         
-        /* Language switcher button */
-        .language-switcher {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            z-index: 1001;
-        }
-        
-        .lang-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            border-radius: 20px;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-        
-        .lang-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-        
-        .lang-btn i {
-            font-size: 16px;
-        }
-        
         /* Print optimization */
         @media print {
             .no-print {
                 display: none !important;
-            }
-            
-            .print-optimized {
-                transform: scale(0.95);
-                margin: 0;
-                padding: 0;
             }
             
             .print-header {
@@ -128,23 +88,23 @@
         <p style="margin-top: 10px; opacity: 0.8;">鍛治町酒場 神田店 勤務表</p>
     </div>
 
-    <!-- Language Switcher -->
-    <div class="language-switcher no-print">
-        <button class="lang-btn" id="languageSwitch">
-            <i class="fas fa-language"></i>
-            <span id="currentLanguage">日本語</span>
-        </button>
-    </div>
-
     <!-- Main App -->
     <div class="app">
         <!-- Header -->
         <header class="header">
             <div class="header-content">
                 <h1><i class="fas fa-calendar-alt"></i> 鍛治町酒場 神田店</h1>
-                <div class="connection-status" id="connectionStatus">
-                    <i class="fas fa-wifi"></i>
-                    <span>接続済み</span>
+                <div class="header-right">
+                    <div class="language-switcher no-print">
+                        <button class="lang-btn" id="languageSwitch">
+                            <i class="fas fa-language"></i>
+                            <span id="currentLanguage">日本語</span>
+                        </button>
+                    </div>
+                    <div class="connection-status" id="connectionStatus">
+                        <i class="fas fa-wifi"></i>
+                        <span>接続済み</span>
+                    </div>
                 </div>
             </div>
             <div class="current-date" id="currentDate"></div>
@@ -325,7 +285,7 @@
             <button type="button" class="quick-action" onclick="showStats()">
                 <i class="fas fa-chart-bar"></i>
                 <span data-lang="ja">統計</span>
-                                <span data-lang="zh" style="display:none">统计</span>
+                <span data-lang="zh" style="display:none">统计</span>
             </button>
             <button type="button" class="quick-action" onclick="printAllSchedule()">
                 <i class="fas fa-print"></i>
@@ -612,9 +572,8 @@
         </div>
     </div>
 
-    <!-- Firebase Configuration - SỬA LỖI TRÙNG BIẾN -->
+    <!-- Firebase Configuration -->
     <script>
-        // Xóa biến currentLanguage ở đây vì đã khai báo trong app.js
         const firebaseConfig = {
             apiKey: "AIzaSyB6C3s4EAPEx0GBLnBXAz4aYJfoCBEyofc",
             authDomain: "employee-schedule-893f5.firebaseapp.com",
@@ -644,10 +603,6 @@
             console.log("✅ Firebase initialized");
         } catch (error) {
             console.error("❌ Firebase initialization error:", error);
-            // Hàm showMessage sẽ được định nghĩa trong app.js
-            if (typeof showMessage === 'function') {
-                showMessage("データベース接続エラー", "error");
-            }
         }
         
         // ページ読み込み完了時
