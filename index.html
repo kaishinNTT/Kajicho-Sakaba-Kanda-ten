@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>鍛治町酒場 神田店 - 勤務表管理</title>
     <link rel="stylesheet" href="style.css">
     <!-- Firebase -->
@@ -142,7 +141,7 @@
                 min-height: auto;
             }
             
-            /* スマートフォン印刷用 */
+            /* For mobile printing */
             @page {
                 margin: 0.5cm;
                 size: auto;
@@ -163,7 +162,7 @@
                 margin-bottom: 10px;
             }
             
-            /* コンパクトな表示 */
+            /* Compact display */
             .employee-name {
                 font-size: 12px;
             }
@@ -176,10 +175,37 @@
             .stat-item {
                 font-size: 10px;
             }
+            
+            /* Improved print layout for single employee */
+            .single-employee-print .week-row {
+                min-height: 60px !important;
+            }
+            
+            .single-employee-print .week-cell {
+                min-height: 60px !important;
+                padding: 4px 2px !important;
+            }
+            
+            .single-employee-print .day-schedule-item {
+                padding: 2px !important;
+                font-size: 8px !important;
+            }
         }
         
         .print-header {
             display: none;
+        }
+        
+        /* Hide dark mode for iPhone */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            }
+            
+            .app {
+                background: white !important;
+                color: #333 !important;
+            }
         }
     </style>
 </head>
@@ -448,7 +474,7 @@
                                 <span data-lang="ja">コピー</span>
                                 <span data-lang="zh" style="display:none">复制</span>
                             </button>
-                            <button type="button" class="btn-action" onclick="printSchedule()">
+                            <button type="button" class="btn-action" onclick="printEmployeeSchedule()">
                                 <i class="fas fa-print"></i> 
                                 <span data-lang="ja">印刷</span>
                                 <span data-lang="zh" style="display:none">打印</span>
