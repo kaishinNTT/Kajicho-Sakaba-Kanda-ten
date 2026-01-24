@@ -49,6 +49,26 @@
         
         /* Print optimization */
         @media print {
+            body * {
+                visibility: hidden;
+            }
+            
+            .app, .app * {
+                visibility: visible;
+            }
+            
+            .app {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
             .no-print {
                 display: none !important;
             }
@@ -62,7 +82,7 @@
             }
             
             .company-name {
-                font-size: 20px !important;
+                font-size: 22px !important;
                 color: #2563eb;
                 font-weight: 800;
                 margin-bottom: 5px;
@@ -72,6 +92,89 @@
                 font-size: 14px;
                 color: #666;
                 font-weight: 600;
+            }
+            
+            .weekly-schedule-container {
+                max-height: none !important;
+                overflow: visible !important;
+                border: none !important;
+            }
+            
+            .weekly-schedule {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+            
+            .week-header {
+                position: static !important;
+                background: #e6f0ff !important;
+            }
+            
+            .week-cell:first-child {
+                position: static !important;
+            }
+            
+            .day-schedule-item {
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                right: auto !important;
+                bottom: auto !important;
+                margin: 2px;
+            }
+            
+            .compact-time {
+                font-size: 9px;
+                line-height: 1;
+            }
+            
+            .week-row {
+                min-height: auto;
+                page-break-inside: avoid;
+            }
+            
+            .week-cell {
+                min-height: auto;
+                padding: 8px 4px;
+            }
+            
+            .week-cell:first-child {
+                min-height: auto;
+            }
+            
+            /* スマートフォン印刷用 */
+            @page {
+                margin: 0.5cm;
+                size: auto;
+            }
+            
+            body {
+                background: white !important;
+                padding: 0 !important;
+            }
+            
+            .main-content {
+                padding: 10px !important;
+                overflow: visible !important;
+            }
+            
+            .view-header h2 {
+                font-size: 18px;
+                margin-bottom: 10px;
+            }
+            
+            /* コンパクトな表示 */
+            .employee-name {
+                font-size: 12px;
+            }
+            
+            .employee-position {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+            
+            .stat-item {
+                font-size: 10px;
             }
         }
         
@@ -340,12 +443,12 @@
                         </button>
                         
                         <div class="split-buttons">
-                            <button type="button" class="btn-action" onclick="copyEmployeeSchedule()">
+                            <button type="button" class="btn-action" onclick="copyScheduleAsText()">
                                 <i class="fas fa-copy"></i> 
                                 <span data-lang="ja">コピー</span>
                                 <span data-lang="zh" style="display:none">复制</span>
                             </button>
-                            <button type="button" class="btn-action" onclick="printEmployeeSchedule()">
+                            <button type="button" class="btn-action" onclick="printSchedule()">
                                 <i class="fas fa-print"></i> 
                                 <span data-lang="ja">印刷</span>
                                 <span data-lang="zh" style="display:none">打印</span>
