@@ -10,6 +10,14 @@ let currentLanguage = 'ja';
 let quickEditEmployeeId = null; // nhân viên đang được sửa nhanh vị trí (职种)
 let dragEmployeeId = null; // nhân viên đang được kéo (drag & drop đổi vị trí)
 
+// ==================== TÀI KHOẢN NHÂN VIÊN: mẫu ID cố định + mật khẩu tự sinh ====================
+// ID đăng nhập của nhân viên có dạng cố định "KAJICHO01", "KAJICHO02"... (không cần nhập email thật).
+// Vì Firebase Auth (client) bắt buộc định dạng email, hệ thống tự ghép thêm 1 domain giả cố định
+// ở phía sau khi tạo/đăng nhập tài khoản - nhân viên không cần biết tới domain giả này.
+const STAFF_ACCOUNT_PREFIX = 'KAJICHO';
+const STAFF_LOGIN_DOMAIN = '@kajicho-staff.local';
+let pendingStaffAccount = null; // { username, password } - bộ ID/mật khẩu vừa sinh, chưa bấm "tạo" thì chưa lưu vào DB
+
 // ==================== POSITIONS CONFIG ====================
 // Danh sách vị trí (职种) dùng chung cho toàn bộ app. Thêm vị trí mới chỉ cần
 // thêm 1 phần tử vào đây - toàn bộ UI (filter, card nhóm, lịch tuần, thống kê...)
@@ -435,6 +443,9 @@ function closeModal(modalId) {
     if (modalId === 'employeeModal') {
         selectedEmployee = null;
     }
+    if (modalId === 'accountModal') {
+        pendingStaffAccount = null;
+    }
 }
 
 // ==================== MESSAGE FUNCTIONS ====================
@@ -808,6 +819,10 @@ function getDayHeadcount(dateString) {
     
     Object.values(schedules).forEach(s => {
         if (!s || s.date !== dateString || s.isDayOff) return;
+        // Chỉ tính vào tổng theo vị trí những ca 晚班 (bắt đầu từ 17h trở đi).
+        // Ca 早班 (trước 17h, từ sáng tới 17h) KHÔNG được tính vào tổng số người/vị trí này,
+        // dù vẫn hiển thị bình thường trên lịch tuần (chỉ đổi màu để dễ phân biệt).
+        if (getShiftPeriod(s.startTime) !== 'late') return;
         // Với NGÀY HÔM NAY: chỉ tính những người ĐANG trong ca làm tại thời điểm hiện tại
         // (ai đã tan làm rồi thì không tính vào tổng nữa). Ngày khác (quá khứ/tương lai)
         // vẫn giữ nguyên logic đếm cả ngày như cũ.
@@ -1348,6 +1363,81 @@ function copyAllScheduleToNextWeek() {
 }
 
 // ==================== TÀI KHOẢN ĐĂNG NHẬP CHO NHÂN VIÊN (Firebase Authentication) ====================
+// ID đăng nhập dạng cố định (KAJICHO01, KAJICHO02...) + mật khẩu tự sinh ngẫu nhiên bảo mật,
+// admin chỉ cần bấm "コピー" rồi gửi cho nhân viên - không cần tự nghĩ/nhập email hay mật khẩu.
+function generateNextStaffUsername() {
+    let maxNum = 0;
+    const pattern = new RegExp('^' + STAFF_ACCOUNT_PREFIX + '(\\d+)$', 'i');
+    employees.forEach(e => {
+        if (e && e.loginUsername) {
+            const m = String(e.loginUsername).match(pattern);
+            if (m) {
+                const num = parseInt(m[1], 10);
+                if (!isNaN(num) && num > maxNum) maxNum = num;
+            }
+        }
+    });
+    const next = maxNum + 1;
+    const padded = String(next).padStart(2, '0');
+    return `${STAFF_ACCOUNT_PREFIX}${padded}`;
+}
+
+function secureRandomIndex(max) {
+    const arr = new Uint32Array(1);
+    (window.crypto || window.msCrypto).getRandomValues(arr);
+    return arr[0] % max;
+}
+
+function generateSecureStaffPassword(length = 10) {
+    // Bỏ các ký tự dễ nhầm lẫn khi đọc/gõ lại (I, O, 0, 1, l...)
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '!@#$%*?';
+    const all = upper + lower + digits + symbols;
+
+    // Đảm bảo có đủ chữ hoa/thường/số/ký tự đặc biệt để mật khẩu đủ mạnh
+    let chars = [
+        upper[secureRandomIndex(upper.length)],
+        lower[secureRandomIndex(lower.length)],
+        digits[secureRandomIndex(digits.length)],
+        symbols[secureRandomIndex(symbols.length)]
+    ];
+    for (let i = chars.length; i < length; i++) {
+        chars.push(all[secureRandomIndex(all.length)]);
+    }
+    // Xáo trộn vị trí để 4 ký tự đầu không luôn cố định theo thứ tự hoa/thường/số/ký tự
+    for (let i = chars.length - 1; i > 0; i--) {
+        const j = secureRandomIndex(i + 1);
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    return chars.join('');
+}
+
+function regenerateStaffAccountFields() {
+    if (!pendingStaffAccount) return;
+    pendingStaffAccount.password = generateSecureStaffPassword();
+    const passField = document.getElementById('newAccountPasswordDisplay');
+    if (passField) passField.value = pendingStaffAccount.password;
+}
+
+function copyStaffAccountCredentials(employeeId) {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee || !pendingStaffAccount) return;
+    const text = currentLanguage === 'ja'
+        ? `【${employee.name} 様 ログイン情報】\nID: ${pendingStaffAccount.username}\nパスワード: ${pendingStaffAccount.password}`
+        : `【${employee.name} 登录信息】\n账号: ${pendingStaffAccount.username}\n密码: ${pendingStaffAccount.password}`;
+
+    const done = () => showMessage(currentLanguage === 'ja' ? 'コピーしました' : '已复制', 'success');
+    const fail = () => showMessage(currentLanguage === 'ja' ? 'コピー失敗' : '复制失败', 'error');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+        fail();
+    }
+}
+
 function showEmployeeAccountModal(employeeId) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
@@ -1356,6 +1446,8 @@ function showEmployeeAccountModal(employeeId) {
     if (!body) return;
     
     if (employee.uid && employee.loginEmail) {
+        pendingStaffAccount = null;
+        const displayId = employee.loginUsername || employee.loginEmail;
         body.innerHTML = `
             <div style="text-align:center; margin-bottom: 20px;">
                 <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
@@ -1366,11 +1458,13 @@ function showEmployeeAccountModal(employeeId) {
                     <i class="fas fa-circle-check"></i>
                     <span data-lang="ja">アカウント設定済み</span><span data-lang="zh" style="display:none">已设置账号</span>
                 </div>
-                <div style="font-size: 13px; color: var(--gray-600);">Email: <strong>${employee.loginEmail}</strong></div>
+                <div style="font-size: 13px; color: var(--gray-600);">
+                    <span data-lang="ja">ログインID</span><span data-lang="zh" style="display:none">登录账号</span>: <strong>${displayId}</strong>
+                </div>
             </div>
             <p style="font-size:12px; color: var(--gray-500); margin-bottom:16px;">
-                <span data-lang="ja">※ パスワードを忘れた場合は、リンク解除後に新しいメール/パスワードで再作成してください(クライアント側の制約でパスワードの直接変更はできません)。</span>
-                <span data-lang="zh" style="display:none">※ 如果忘记密码，请先解除关联，再用新的邮箱/密码重新创建(受客户端限制，无法直接修改密码)。</span>
+                <span data-lang="ja">※ パスワードを忘れた場合は、リンク解除後に新しいIDで再作成してください(クライアント側の制約でパスワードの直接変更はできません)。</span>
+                <span data-lang="zh" style="display:none">※ 如果忘记密码，请先解除关联，再用新的账号重新创建(受客户端限制，无法直接修改密码)。</span>
             </p>
             <button type="button" class="btn-secondary" style="width:100%;" onclick="unlinkEmployeeAccount('${employeeId}')">
                 <i class="fas fa-link-slash"></i>
@@ -1378,6 +1472,10 @@ function showEmployeeAccountModal(employeeId) {
             </button>
         `;
     } else {
+        pendingStaffAccount = {
+            username: generateNextStaffUsername(),
+            password: generateSecureStaffPassword()
+        };
         body.innerHTML = `
             <div style="text-align:center; margin-bottom: 20px;">
                 <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
@@ -1387,19 +1485,32 @@ function showEmployeeAccountModal(employeeId) {
                 </div>
             </div>
             <div class="form-group">
-                <label data-lang="ja">メールアドレス</label>
-                <label data-lang="zh" style="display:none">邮箱</label>
-                <input type="email" id="newAccountEmail" class="input-field" placeholder="staff1@example.com">
+                <label data-lang="ja">ログインID(自動生成)</label>
+                <label data-lang="zh" style="display:none">登录账号(自动生成)</label>
+                <input type="text" id="newAccountUsernameDisplay" class="input-field" value="${pendingStaffAccount.username}" readonly style="font-weight:700; letter-spacing:0.5px;">
             </div>
             <div class="form-group">
-                <label data-lang="ja">パスワード(6文字以上)</label>
-                <label data-lang="zh" style="display:none">密码(至少6位)</label>
-                <input type="text" id="newAccountPassword" class="input-field" placeholder="••••••">
+                <label data-lang="ja">パスワード(自動生成)</label>
+                <label data-lang="zh" style="display:none">密码(自动生成)</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="newAccountPasswordDisplay" class="input-field" value="${pendingStaffAccount.password}" readonly style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
+                    <button type="button" class="btn-secondary" style="flex-shrink:0; padding:0 14px;" onclick="regenerateStaffAccountFields()" title="${currentLanguage === 'ja' ? 'パスワードを再生成' : '重新生成密码'}">
+                        <i class="fas fa-rotate"></i>
+                    </button>
+                </div>
             </div>
+            <button type="button" class="btn-secondary" style="width:100%; margin-bottom:10px;" onclick="copyStaffAccountCredentials('${employeeId}')">
+                <i class="fas fa-copy"></i>
+                <span data-lang="ja">ID・パスワードをコピー</span><span data-lang="zh" style="display:none">复制账号和密码</span>
+            </button>
             <button type="button" class="btn-primary" style="width:100%;" onclick="createEmployeeAccount('${employeeId}')">
                 <i class="fas fa-user-plus"></i>
                 <span data-lang="ja">アカウント作成</span><span data-lang="zh" style="display:none">创建账号</span>
             </button>
+            <p style="font-size:11px; color: var(--gray-400); margin-top:12px;">
+                <span data-lang="ja">※ 作成後はこの画面でパスワードを再確認できません。必ず作成前にコピーしてスタッフに渡してください。</span>
+                <span data-lang="zh" style="display:none">※ 创建后将无法在此重新查看密码，请务必在创建前先复制并交给员工。</span>
+            </p>
         `;
     }
     
@@ -1421,16 +1532,8 @@ function createEmployeeAccount(employeeId) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
     
-    const email = document.getElementById('newAccountEmail')?.value.trim();
-    const password = document.getElementById('newAccountPassword')?.value;
-    
-    if (!email || !password) {
-        showMessage(currentLanguage === 'ja' ? 'メールとパスワードを入力してください' : '请输入邮箱和密码', 'warning');
-        return;
-    }
-    
-    if (password.length < 6) {
-        showMessage(currentLanguage === 'ja' ? 'パスワードは6文字以上にしてください' : '密码至少需要6位', 'warning');
+    if (!pendingStaffAccount || !pendingStaffAccount.username || !pendingStaffAccount.password) {
+        showMessage(currentLanguage === 'ja' ? 'エラーが発生しました。もう一度開き直してください' : '发生错误，请重新打开此窗口', 'error');
         return;
     }
     
@@ -1439,8 +1542,14 @@ function createEmployeeAccount(employeeId) {
         return;
     }
     
+    const username = pendingStaffAccount.username;
+    const password = pendingStaffAccount.password;
+    // ID hiển thị cho nhân viên (VD: KAJICHO01) được ghép thêm domain giả cố định để thỏa
+    // định dạng email mà Firebase Auth yêu cầu - nhân viên không cần biết tới domain này.
+    const technicalEmail = `${username.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
+    
     // Dùng app phụ (secondaryApp) để tạo tài khoản, tránh làm mất phiên đăng nhập hiện tại
-    window.secondaryApp.auth().createUserWithEmailAndPassword(email, password)
+    window.secondaryApp.auth().createUserWithEmailAndPassword(technicalEmail, password)
     .then(cred => {
         const uid = cred.user.uid;
         return window.secondaryApp.auth().signOut().then(() => uid);
@@ -1448,21 +1557,21 @@ function createEmployeeAccount(employeeId) {
     .then(uid => {
         return window.database.ref(`employees/${employeeId}`).update({
             uid: uid,
-            loginEmail: email
+            loginEmail: technicalEmail,
+            loginUsername: username
         });
     })
     .then(() => {
         showMessage(currentLanguage === 'ja' ? 'アカウントを作成しました' : '账号创建成功', 'success');
+        pendingStaffAccount = null;
         showEmployeeAccountModal(employeeId);
     })
     .catch(error => {
         let msg = error.message;
         if (error.code === 'auth/email-already-in-use') {
-            msg = currentLanguage === 'ja' ? 'このメールは既に使われています' : '该邮箱已被使用';
+            msg = currentLanguage === 'ja' ? 'このIDは既に使われています。もう一度開き直して再生成してください' : '该ID已被使用，请重新打开此窗口生成新账号';
         } else if (error.code === 'auth/weak-password') {
-            msg = currentLanguage === 'ja' ? 'パスワードが弱すぎます(6文字以上にしてください)' : '密码强度不够(至少6位)';
-        } else if (error.code === 'auth/invalid-email') {
-            msg = currentLanguage === 'ja' ? 'メールアドレスの形式が正しくありません' : '邮箱格式不正确';
+            msg = currentLanguage === 'ja' ? 'パスワードが弱すぎます。再生成ボタンでやり直してください' : '密码强度不够，请点击重新生成';
         }
         showMessage((currentLanguage === 'ja' ? '作成失敗: ' : '创建失败: ') + msg, 'error');
     });
@@ -2280,8 +2389,10 @@ function buildWeeklyRowHtml(employee, days, schedulesByEmployee) {
                         scheduleClass = `work ${shiftPeriod}`;
                         const dayPosition = schedule.employeePosition || employee.position;
                         const isDiffPosition = dayPosition !== employee.position;
+                        const shiftIcon = shiftPeriod === 'early' ? 'fa-cloud-sun' : 'fa-moon';
                         scheduleText = `
                             <div class="compact-time">
+                                <i class="fas ${shiftIcon} shift-period-icon"></i>
                                 <span>${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}</span>
                                 <span>${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}</span>
                             </div>
@@ -2291,9 +2402,13 @@ function buildWeeklyRowHtml(employee, days, schedulesByEmployee) {
                 }
                 
                 const dayPositionForTitle = schedule && !schedule.isDayOff ? (schedule.employeePosition || employee.position) : null;
+                const titleShiftPeriod = schedule && !schedule.isDayOff ? getShiftPeriod(schedule.startTime) : null;
+                const headcountNote = titleShiftPeriod === 'early'
+                    ? (currentLanguage === 'ja' ? ' (早番・人数集計対象外)' : ' (早班・不计入人数统计)')
+                    : (titleShiftPeriod === 'late' ? (currentLanguage === 'ja' ? ' (晩番)' : ' (晚班)') : '');
                 const title = schedule ? (schedule.isDayOff ? 
                     (currentLanguage === 'ja' ? '休み' : '休息') : 
-                    `${schedule.startTime || ''}-${schedule.endTime || ''}${dayPositionForTitle && dayPositionForTitle !== employee.position ? ' · ' + positionLabel(dayPositionForTitle) : ''}`) : 
+                    `${schedule.startTime || ''}-${schedule.endTime || ''}${dayPositionForTitle && dayPositionForTitle !== employee.position ? ' · ' + positionLabel(dayPositionForTitle) : ''}${headcountNote}`) : 
                     (currentLanguage === 'ja' ? 'クリックで追加' : '点击添加');
                 
                 return `
@@ -2347,7 +2462,7 @@ function renderWeeklySchedule() {
                     <div class="week-header-cell ${isToday ? 'today' : ''}">
                         <div class="week-header-day">${dayNames[index]}</div>
                         <div class="week-header-date">${month}/${dayNum}</div>
-                        <div class="week-header-count" title="${currentLanguage === 'ja' ? '職種別 出勤人数' : '各职位 出勤人数'}">
+                        <div class="week-header-count" title="${currentLanguage === 'ja' ? '職種別 出勤人数（晩番のみ・早番は含まれません）' : '各职位 出勤人数（仅晚班，早班不计入）'}">
                             ${POSITIONS.map(pos => `<span class="count-pill ${pos.cls}" title="${positionLabel(pos.key)}">${headcount[pos.key] || 0}</span>`).join('')}
                         </div>
                     </div>
@@ -3146,7 +3261,7 @@ function shareWeeklySchedule() {
         text += groupText(label, groupEmployees);
     });
 
-    text += `${currentLanguage === 'ja' ? '📊 日別の人数' : '📊 每日人数'}\n`;
+    text += `${currentLanguage === 'ja' ? '📊 日別の人数（晩番のみ）' : '📊 每日人数（仅晚班）'}\n`;
     days.forEach((day, index) => {
         const headcount = getDayHeadcount(day.dateString);
         const countStr = POSITIONS.map(pos => `${positionEmoji[pos.key] || '👤'}${headcount[pos.key] || 0}`).join(' ');

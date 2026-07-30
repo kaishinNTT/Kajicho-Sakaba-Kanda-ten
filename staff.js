@@ -7,6 +7,11 @@ let currentEmployee = null;   // { id, name, position, uid, loginEmail }
 let currentWeekOffset = 0;
 let cachedRequests = [];
 
+// ID đăng nhập của nhân viên có dạng cố định (VD: KAJICHO01) do admin tạo bên index.html.
+// Vì Firebase Auth (client) bắt buộc định dạng email, domain giả cố định này được ghép thêm
+// vào phía sau ID khi đăng nhập - phải khớp với STAFF_LOGIN_DOMAIN bên app.js.
+const STAFF_LOGIN_DOMAIN = '@kajicho-staff.local';
+
 const POSITIONS = [
     { key: '前台/服务区', ja: 'フロント', zh: '前台', icon: 'fa-door-open' },
     { key: '厨房区', ja: '厨房', zh: '厨房', icon: 'fa-utensils' },
@@ -114,16 +119,20 @@ function toggleStaffLang() {
 
 // ==================== AUTH ====================
 function doLogin() {
-    const email = document.getElementById('loginEmail').value.trim();
+    const rawId = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorBox = document.getElementById('loginError');
     errorBox.style.display = 'none';
 
-    if (!email || !password) {
-        errorBox.textContent = currentLang === 'ja' ? 'メールとパスワードを入力してください' : '请输入邮箱和密码';
+    if (!rawId || !password) {
+        errorBox.textContent = currentLang === 'ja' ? 'IDとパスワードを入力してください' : '请输入账号和密码';
         errorBox.style.display = 'block';
         return;
     }
+
+    // Nhân viên chỉ cần nhập ID (VD: KAJICHO01) - tự ghép domain giả để đăng nhập Firebase.
+    // Nếu ID đã có dạng email đầy đủ (tài khoản cũ tạo trước khi có tính năng này) thì giữ nguyên.
+    const email = rawId.includes('@') ? rawId : `${rawId.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
 
     const btn = document.getElementById('loginBtn');
     btn.disabled = true;
@@ -132,7 +141,7 @@ function doLogin() {
     .catch(error => {
         let msg = error.message;
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-            msg = currentLang === 'ja' ? 'メールまたはパスワードが正しくありません' : '邮箱或密码不正确';
+            msg = currentLang === 'ja' ? 'IDまたはパスワードが正しくありません' : '账号或密码不正确';
         }
         errorBox.textContent = msg;
         errorBox.style.display = 'block';
@@ -259,28 +268,24 @@ function renderSchedule() {
 }
 
 // ==================== REQUEST FORM ====================
+// Từ bản này chỉ còn lại 1 tính năng duy nhất: gửi lưu ý/tin nhắn tự do cho bên quản lý
+// (không còn đăng ký nghỉ / đổi giờ trực tiếp từ trang nhân viên nữa - luôn gửi dạng "other").
 function openRequestForm(prefillDate) {
     document.getElementById('reqDate').value = prefillDate || toDateString(new Date());
     document.getElementById('reqNote').value = '';
-    setReqType('dayoff');
     openStaffModal('requestModal');
-}
-
-function setReqType(type) {
-    document.querySelectorAll('#reqTypeSelector .type-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.type === type);
-    });
-    document.getElementById('reqTimeGroup').style.display = (type === 'time_change') ? 'grid' : 'none';
 }
 
 function submitStaffRequest() {
     const date = document.getElementById('reqDate').value;
-    const typeBtn = document.querySelector('#reqTypeSelector .type-btn.active');
-    const type = typeBtn ? typeBtn.dataset.type : 'dayoff';
     const note = document.getElementById('reqNote').value.trim();
 
     if (!date) {
         showToast(currentLang === 'ja' ? '日付を選択してください' : '请选择日期', 'warning');
+        return;
+    }
+    if (!note) {
+        showToast(currentLang === 'ja' ? '内容を入力してください' : '请输入内容', 'warning');
         return;
     }
 
@@ -288,21 +293,16 @@ function submitStaffRequest() {
         employeeId: currentEmployee.id,
         employeeName: currentEmployee.name,
         date: date,
-        type: type,
+        type: 'other',
         note: note,
         status: 'pending',
         createdAt: Date.now()
     };
 
-    if (type === 'time_change') {
-        requestData.requestedStartTime = document.getElementById('reqStartTime').value;
-        requestData.requestedEndTime = document.getElementById('reqEndTime').value;
-    }
-
     window.database.ref('changeRequests').push(requestData)
     .then(() => {
         closeStaffModal('requestModal');
-        showToast(currentLang === 'ja' ? 'リクエストを送信しました' : '申请已提交', 'success');
+        showToast(currentLang === 'ja' ? '送信しました' : '已提交', 'success');
         switchStaffTab('requests');
     })
     .catch(error => {

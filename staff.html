@@ -190,9 +190,9 @@
             </div>
             <div class="staff-login-error" id="loginError"></div>
             <div class="form-group">
-                <label data-lang="ja">メールアドレス</label>
-                <label data-lang="zh">邮箱</label>
-                <input type="email" id="loginEmail" class="input-field" placeholder="staff1@example.com" autocomplete="username">
+                <label data-lang="ja">ログインID</label>
+                <label data-lang="zh">登录账号</label>
+                <input type="text" id="loginEmail" class="input-field" placeholder="KAJICHO01" autocomplete="username" autocapitalize="characters">
             </div>
             <div class="form-group">
                 <label data-lang="ja">パスワード</label>
@@ -261,53 +261,25 @@
         </div>
     </div>
 
-    <!-- Request Form Modal -->
+    <!-- Request Form Modal (chỉ còn 1 tính năng duy nhất: gửi lưu ý/tin nhắn cho bên quản lý) -->
     <div class="modal" id="requestModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-paper-plane"></i> <span data-lang="ja">シフト変更リクエスト</span><span data-lang="zh">排班变更申请</span></h3>
+                <h3><i class="fas fa-comment-dots"></i> <span data-lang="ja">本社への連絡</span><span data-lang="zh">给店长留言</span></h3>
                 <button type="button" class="modal-close" onclick="closeStaffModal('requestModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label data-lang="ja">日付</label>
-                    <label data-lang="zh">日期</label>
+                    <label data-lang="ja">関連する日付</label>
+                    <label data-lang="zh">相关日期</label>
                     <input type="date" id="reqDate" class="input-field">
                 </div>
                 <div class="form-group">
-                    <label data-lang="ja">種類</label>
-                    <label data-lang="zh">类型</label>
-                    <div class="type-selector" id="reqTypeSelector">
-                        <button type="button" class="type-btn active" data-type="dayoff" onclick="setReqType('dayoff')">
-                            <i class="fas fa-umbrella-beach"></i>
-                            <span data-lang="ja">休み希望</span><span data-lang="zh">请假</span>
-                        </button>
-                        <button type="button" class="type-btn" data-type="time_change" onclick="setReqType('time_change')">
-                            <i class="fas fa-clock"></i>
-                            <span data-lang="ja">時間変更</span><span data-lang="zh">改时间</span>
-                        </button>
-                        <button type="button" class="type-btn" data-type="other" onclick="setReqType('other')">
-                            <i class="fas fa-comment"></i>
-                            <span data-lang="ja">その他</span><span data-lang="zh">其他</span>
-                        </button>
-                    </div>
-                </div>
-                <div class="time-group" id="reqTimeGroup" style="display:none;">
-                    <div class="form-group">
-                        <label data-lang="ja">開始</label><label data-lang="zh">开始</label>
-                        <input type="time" id="reqStartTime" class="input-field" value="08:00">
-                    </div>
-                    <div class="form-group">
-                        <label data-lang="ja">終了</label><label data-lang="zh">结束</label>
-                        <input type="time" id="reqEndTime" class="input-field" value="17:00">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label data-lang="ja">メモ</label>
-                    <label data-lang="zh">备注</label>
-                    <textarea id="reqNote" class="input-field" rows="3" placeholder="..."></textarea>
+                    <label data-lang="ja">内容</label>
+                    <label data-lang="zh">内容</label>
+                    <textarea id="reqNote" class="input-field" rows="4" placeholder="..."></textarea>
                 </div>
                 <button type="button" class="btn-primary" style="width:100%;" onclick="submitStaffRequest()">
                     <i class="fas fa-paper-plane"></i>
