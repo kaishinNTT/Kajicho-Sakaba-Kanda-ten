@@ -732,6 +732,22 @@ function shiftPeriodLabel(startTime) {
     return '';
 }
 
+// Tạo HTML cho 1 mốc giờ (VD "10:00" -> giờ "10" + phút ":00" tách riêng span).
+// Mục đích: trên màn hình hẹp (iPhone), CSS có thể ẩn bớt phần ":00" (khi phút = 0,
+// chiếm đa số các ca ở quán) để hàng giờ "10-24" gọn lại vừa 1 dòng thay vì bị ngắt
+// dòng/dồn quá cao như trước - trong khi trên desktop hoặc khi phút khác 0 vẫn hiện
+// đầy đủ "10:00" bình thường không mất thông tin gì.
+// isEndTime=true + "00:00" -> hiển thị "24" thay vì "00" (rõ nghĩa ca kết thúc lúc
+// nửa đêm, không nhầm là bắt đầu lúc 0h).
+function formatTimePartHtml(timeStr, isEndTime) {
+    if (!timeStr) return '';
+    const [hStr, mStr = '00'] = timeStr.substring(0, 5).split(':');
+    let hour = hStr;
+    if (isEndTime && hStr === '00' && mStr === '00') hour = '24';
+    const isZeroMin = mStr === '00';
+    return `<span class="tp-hour">${hour}</span><span class="tp-min${isZeroMin ? ' zero' : ''}">:${mStr}</span>`;
+}
+
 // ==================== VIEW MANAGEMENT ====================
 function switchView(viewName) {
     // Hide all views
@@ -2795,8 +2811,9 @@ function buildWeeklyRowHtml(employee, days, schedulesByEmployee) {
                         scheduleText = `
                             <div class="compact-time">
                                 <i class="fas ${shiftIcon} shift-period-icon"></i>
-                                <span>${schedule.startTime ? schedule.startTime.substring(0, 5) : ''}</span>
-                                <span>${schedule.endTime ? schedule.endTime.substring(0, 5) : ''}</span>
+                                <span class="time-part">${formatTimePartHtml(schedule.startTime, false)}</span>
+                                <span class="time-sep">-</span>
+                                <span class="time-part">${formatTimePartHtml(schedule.endTime, true)}</span>
                             </div>
                             ${isDiffPosition ? `<div class="diff-position-badge"><i class="fas ${positionIcon(dayPosition)}"></i> ${positionLabel(dayPosition)}</div>` : ''}
                         `;

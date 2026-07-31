@@ -1061,6 +1061,12 @@ body {
     font-weight: 700;
 }
 
+/* Trên desktop, giờ bắt đầu/kết thúc xếp thành 2 dòng riêng (đã đủ rõ ràng
+   nhờ xuống dòng) nên không cần dấu gạch nối giữa 2 mốc giờ */
+.time-sep {
+    display: none;
+}
+
 .shift-period-icon {
     font-size: 0.7rem;
     margin-bottom: 2px;
@@ -1934,7 +1940,7 @@ body {
     
     .main-content {
         padding: 12px;
-        padding-bottom: calc(100px + env(safe-area-inset-bottom));
+        padding-bottom: calc(140px + env(safe-area-inset-bottom));
     }
     
     .view-header {
@@ -2164,30 +2170,39 @@ body {
     }
     
     .day-schedule-item {
-        font-size: 0.68rem;
+        font-size: 0.72rem;
         padding: 3px 2px;
     }
 
     /* Icon + giờ bắt đầu/kết thúc hiển thị GỘP THÀNH 1 HÀNG NGANG thay vì xếp
        dọc từng dòng (icon / giờ vào / giờ ra) như trước - đây là nguyên nhân
        chính khiến mỗi ô ca làm rất cao, kéo cả bảng lịch tuần dài lê thê trên
-       màn hình hẹp. Chữ vẫn đủ to (0.6rem, đậm) để đọc rõ giờ làm. */
+       màn hình hẹp. Đồng thời ẩn bớt phần ":00" khi ca tròn giờ (đa số ca ở
+       quán, VD 10:00-24:00) để chữ có thể TO hơn hẳn (0.78rem) mà vẫn gọn vừa
+       1 dòng thay vì phải thu nhỏ chữ hết mức để nhồi "10:00-00:00" - kết quả
+       hiện gọn còn "10-24" dễ đọc hơn nhiều. Ca lẻ phút (hiếm) vẫn hiện đủ giờ:phút. */
     .compact-time {
         flex-direction: row;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         justify-content: center;
-        gap: 0 2px;
-        line-height: 1.15;
-        font-size: 0.6rem;
+        align-items: baseline;
+        gap: 1px;
+        line-height: 1.1;
+        font-size: 0.78rem;
     }
 
-    .compact-time span:first-of-type::after {
-        content: '-';
-        margin: 0 1px;
+    .time-sep {
+        display: inline;
+        opacity: 0.7;
+        font-weight: 600;
+    }
+
+    .tp-min.zero {
+        display: none;
     }
     
     .shift-period-icon {
-        font-size: 0.55rem;
+        font-size: 0.6rem;
         margin-bottom: 0;
     }
 
