@@ -1483,14 +1483,38 @@ function generateNextStaffUsernameFromList(list) {
     return `${STAFF_ACCOUNT_PREFIX}${padded}`;
 }
 
-function setLoginIndexEntry(username, technicalEmail) {
-    if (!window.database || !username) return Promise.resolve();
-    return window.database.ref(`loginIndex/${username.toUpperCase()}`).set(technicalEmail);
-}
+// (Lưu ý: trước đây có 2 hàm setLoginIndexEntry/clearLoginIndexEntry ghi riêng lẻ vào
+// loginIndex - đã gộp vào các lệnh update() đa đường dẫn (atomic) ngay tại nơi sử dụng
+// để tránh để lại dữ liệu nửa vời khi Firebase Rules chặn 1 phần của thao tác ghi.)
 
-function clearLoginIndexEntry(username) {
-    if (!window.database || !username) return Promise.resolve();
-    return window.database.ref(`loginIndex/${username.toUpperCase()}`).remove();
+// Diễn giải lỗi cho toàn bộ luồng tạo/quản lý tài khoản đăng nhập nhân viên, để không hiển
+// thị thẳng thông báo kỹ thuật (tiếng Anh, mã lỗi Firebase) cho admin.
+function describeAccountError(error) {
+    const code = error && error.code;
+    const rawMsg = (error && error.message) || '';
+    if (code === 'auth/email-already-in-use') {
+        return currentLanguage === 'ja'
+            ? 'このIDは既に使われています。もう一度お試しください'
+            : '该ID已被占用，请重试';
+    }
+    if (code === 'auth/weak-password') {
+        return currentLanguage === 'ja'
+            ? 'パスワードが弱すぎます。再生成ボタンでやり直してください'
+            : '密码强度不够，请点击重新生成';
+    }
+    if (code === 'auth/network-request-failed') {
+        return currentLanguage === 'ja'
+            ? 'ネットワークに接続できません。通信状態をご確認のうえもう一度お試しください'
+            : '网络连接失败，请检查网络后重试';
+    }
+    // Lỗi ghi Realtime Database do Firebase Rules chưa cho phép (thường là node loginIndex
+    // chưa được mở quyền đọc/ghi - xem README mục "Lưu ý về Firebase Rules").
+    if (code === 'PERMISSION_DENIED' || /permission_denied/i.test(rawMsg)) {
+        return currentLanguage === 'ja'
+            ? 'データベースの権限エラーです。Firebase Rules で「loginIndex」の読み書きが許可されているかご確認ください(README参照)'
+            : '数据库权限错误。请检查 Firebase Rules 是否已开放 "loginIndex" 节点的读写权限(参见 README)';
+    }
+    return rawMsg || (currentLanguage === 'ja' ? '不明なエラー' : '未知错误');
 }
 
 function fetchFreshEmployeesList() {
@@ -1665,13 +1689,29 @@ function renderAccountExistsView(employeeId, employee, justIssuedPassword) {
             <i class="fas fa-link-slash"></i>
             <span data-lang="ja">アカウントを完全に削除</span><span data-lang="zh" style="display:none">彻底删除账号关联</span>
         </button>
+        <div style="text-align:center; margin-top:14px; padding-top:12px; border-top: 1px dashed var(--border);">
+            <button type="button" onclick="resetEmployeeAccountData('${employeeId}')" style="background:none; border:none; color: var(--gray-400); font-size:11.5px; font-weight:600; cursor:pointer; text-decoration:underline;">
+                <i class="fas fa-wrench"></i>
+                <span data-lang="ja">ログインできない・エラーが出続ける場合はこちら(リセット)</span><span data-lang="zh" style="display:none">如果无法登录或持续报错，点此重置</span>
+            </button>
+        </div>
     `;
     applyLanguageToElement(body);
 }
 
-function renderNewAccountForm(employeeId, employee) {
+function renderNewAccountForm(employeeId, employee, showResetHint) {
     const body = document.getElementById('accountModalBody');
     if (!body || !pendingStaffAccount) return;
+
+    const resetHintHtml = showResetHint ? `
+        <div style="background: var(--warning-light); border: 1px solid rgba(245,158,11,0.35); border-radius: var(--border-radius); padding: 12px 14px; margin-bottom: 14px;">
+            <div style="font-size:12.5px; color: var(--warning-dark, #c2410c); line-height:1.6;">
+                <span data-lang="ja">⚠ データベースへの保存でエラーが発生しました。下の「リセット」を押してから、もう一度お試しください。</span>
+                <span data-lang="zh" style="display:none">⚠ 保存到数据库时出错。请先点击下方"重置"，然后重试。</span>
+            </div>
+        </div>
+    ` : '';
+
     body.innerHTML = `
         <div style="text-align:center; margin-bottom: 20px;">
             <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
@@ -1680,6 +1720,7 @@ function renderNewAccountForm(employeeId, employee) {
                 <span data-lang="ja">まだログインアカウントがありません</span><span data-lang="zh" style="display:none">还没有登录账号</span>
             </div>
         </div>
+        ${resetHintHtml}
         <div class="form-group">
             <label data-lang="ja">ログインID(自動生成)</label>
             <label data-lang="zh" style="display:none">登录账号(自动生成)</label>
@@ -1707,6 +1748,12 @@ function renderNewAccountForm(employeeId, employee) {
             <span data-lang="ja">※ 作成後はこの画面でパスワードを再確認できません。必ず作成前にコピーしてスタッフに渡してください。</span>
             <span data-lang="zh" style="display:none">※ 创建后将无法在此重新查看密码，请务必在创建前先复制并交给员工。</span>
         </p>
+        <div style="text-align:center; margin-top:14px; padding-top:12px; border-top: 1px dashed var(--border);">
+            <button type="button" onclick="resetEmployeeAccountData('${employeeId}')" style="background:none; border:none; color: var(--gray-400); font-size:11.5px; font-weight:600; cursor:pointer; text-decoration:underline;">
+                <i class="fas fa-wrench"></i>
+                <span data-lang="ja">作成でエラーが出続ける場合はこちら(リセット)</span><span data-lang="zh" style="display:none">如果创建持续报错，点此重置</span>
+            </button>
+        </div>
     `;
     applyLanguageToElement(body);
 }
@@ -1721,7 +1768,8 @@ function applyLanguageToElement(container) {
     });
 }
 
-function createEmployeeAccount(employeeId) {
+function createEmployeeAccount(employeeId, attemptCount) {
+    attemptCount = attemptCount || 0;
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
 
@@ -1732,6 +1780,14 @@ function createEmployeeAccount(employeeId) {
 
     if (!window.secondaryApp || !window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
+        return;
+    }
+
+    // Tránh thử lại vô hạn nếu vì lý do gì đó luôn bị trùng ID
+    if (attemptCount >= 5) {
+        showMessage(currentLanguage === 'ja'
+            ? '作成に繰り返し失敗しました。「リセット」ボタンを試すか、時間をおいてもう一度お試しください'
+            : '多次创建失败，请尝试点击"重置"按钮，或稍后再试', 'error');
         return;
     }
 
@@ -1765,12 +1821,28 @@ function createEmployeeAccount(employeeId) {
             return window.secondaryApp.auth().signOut().then(() => uid);
         })
         .then(uid => {
-            return window.database.ref(`employees/${employeeId}`).update({
-                uid: uid,
-                loginEmail: technicalEmail,
-                loginUsername: username
-            }).then(() => setLoginIndexEntry(username, technicalEmail))
-              .then(() => ({ uid, technicalEmail, username }));
+            // QUAN TRỌNG: ghi employees/{id} VÀ loginIndex/{username} trong CÙNG một lệnh
+            // update() đa đường dẫn (multi-path). Nhờ vậy việc ghi có tính nguyên tử: nếu
+            // Firebase Rules chặn 1 trong 2 nhánh (thường gặp nhất là thiếu quyền cho
+            // loginIndex - xem README) thì CẢ HAI đều không được ghi, tránh để lại dữ liệu
+            // nửa vời (employees đã có uid nhưng loginIndex thì chưa) - đây chính là nguyên
+            // nhân trước đây gây ra lỗi "ID đã được sử dụng" khi admin thử tạo lại.
+            const multiUpdate = {};
+            multiUpdate[`employees/${employeeId}/uid`] = uid;
+            multiUpdate[`employees/${employeeId}/loginEmail`] = technicalEmail;
+            multiUpdate[`employees/${employeeId}/loginUsername`] = username;
+            multiUpdate[`loginIndex/${username.toUpperCase()}`] = technicalEmail;
+
+            return window.database.ref().update(multiUpdate)
+                .then(() => ({ uid, technicalEmail, username }))
+                .catch(dbError => {
+                    // Ghi DB thất bại nhưng tài khoản Firebase Auth ĐÃ được tạo ở bước trên
+                    // (không thể huỷ từ client) -> đánh dấu rõ để hiển thị nút "リセット"
+                    // thay vì để admin bấm lại và dính lỗi "ID đã được sử dụng".
+                    dbError.__orphanedAuthEmail = technicalEmail;
+                    dbError.__orphanedUsername = username;
+                    throw dbError;
+                });
         });
     })
     .then(result => {
@@ -1787,13 +1859,23 @@ function createEmployeeAccount(employeeId) {
         renderAccountExistsView(employeeId, updatedEmployee);
     })
     .catch(error => {
-        let msg = error.message;
         if (error.code === 'auth/email-already-in-use') {
-            msg = currentLanguage === 'ja' ? 'このIDは既に使われています。もう一度開き直して再生成してください' : '该ID已被使用，请重新打开此窗口生成新账号';
-        } else if (error.code === 'auth/weak-password') {
-            msg = currentLanguage === 'ja' ? 'パスワードが弱すぎます。再生成ボタンでやり直してください' : '密码强度不够，请点击重新生成';
+            // ID này đã tồn tại bên Firebase Auth - thường do 1 lần tạo trước đó bị lỗi giữa
+            // chừng (ví dụ mất mạng, hoặc DB rules chặn) để lại tài khoản Auth "mồ côi".
+            // Tự động thử ID kế tiếp thay vì bắt admin phải đóng/mở lại nhiều lần.
+            const nextNum = (parseInt((attemptedUsername.match(/(\d+)$/) || [])[1], 10) || 0) + 1;
+            pendingStaffAccount.username = `${STAFF_ACCOUNT_PREFIX}${String(nextNum).padStart(2, '0')}`;
+            createEmployeeAccount(employeeId, attemptCount + 1);
+            return;
         }
-        showMessage((currentLanguage === 'ja' ? '作成失敗: ' : '创建失败: ') + msg, 'error');
+
+        showMessage((currentLanguage === 'ja' ? '作成失敗: ' : '创建失败: ') + describeAccountError(error), 'error');
+
+        // Nếu tài khoản Auth đã được tạo nhưng ghi DB thất bại, hiển thị lại form kèm gợi ý
+        // dùng nút "リセット" để dọn sạch trước khi thử lại (tránh vòng lặp lỗi liên tục).
+        if (error.__orphanedAuthEmail) {
+            renderNewAccountForm(employeeId, employee, true);
+        }
     });
 }
 
@@ -1826,11 +1908,15 @@ function reissueStaffPassword(employeeId) {
         return window.secondaryApp.auth().signOut().then(() => uid);
     })
     .then(uid => {
-        return window.database.ref(`employees/${employeeId}`).update({
-            uid: uid,
-            loginEmail: newTechnicalEmail,
-            loginEmailVersion: version
-        }).then(() => setLoginIndexEntry(username, newTechnicalEmail));
+        // Ghi employees + loginIndex trong CÙNG 1 lệnh update() đa đường dẫn (atomic) - cùng
+        // lý do như ở createEmployeeAccount: tránh để lại dữ liệu nửa vời nếu rules chặn 1
+        // trong 2 nhánh.
+        const multiUpdate = {};
+        multiUpdate[`employees/${employeeId}/uid`] = uid;
+        multiUpdate[`employees/${employeeId}/loginEmail`] = newTechnicalEmail;
+        multiUpdate[`employees/${employeeId}/loginEmailVersion`] = version;
+        multiUpdate[`loginIndex/${username.toUpperCase()}`] = newTechnicalEmail;
+        return window.database.ref().update(multiUpdate);
     })
     .then(() => {
         showMessage(currentLanguage === 'ja' ? '新しいパスワードを発行しました' : '已发放新密码', 'success');
@@ -1838,7 +1924,7 @@ function reissueStaffPassword(employeeId) {
         renderAccountExistsView(employeeId, updatedEmployee, newPassword);
     })
     .catch(error => {
-        showMessage((currentLanguage === 'ja' ? '発行失敗: ' : '发放失败: ') + error.message, 'error');
+        showMessage((currentLanguage === 'ja' ? '発行失敗: ' : '发放失败: ') + describeAccountError(error), 'error');
     });
 }
 
@@ -1855,15 +1941,65 @@ function unlinkEmployeeAccount(employeeId) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
-    
-    window.database.ref(`employees/${employeeId}`).update({ uid: null, loginEmail: null })
-    .then(() => clearLoginIndexEntry(employee.loginUsername))
+
+    // Ghi atomic: xoá uid/loginEmail của employees VÀ entry loginIndex tương ứng trong CÙNG
+    // 1 lệnh update() - ID vẫn được giữ lại (không cấp phát lại cho người khác), đúng như
+    // hành vi đã mô tả trong README.
+    const multiUpdate = {};
+    multiUpdate[`employees/${employeeId}/uid`] = null;
+    multiUpdate[`employees/${employeeId}/loginEmail`] = null;
+    if (employee.loginUsername) {
+        multiUpdate[`loginIndex/${employee.loginUsername.toUpperCase()}`] = null;
+    }
+
+    window.database.ref().update(multiUpdate)
     .then(() => {
         showMessage(currentLanguage === 'ja' ? '削除しました' : '已删除', 'success');
         showEmployeeAccountModal(employeeId);
     })
     .catch(error => {
-        showMessage((currentLanguage === 'ja' ? '設定失敗: ' : '设置失败: ') + error.message, 'error');
+        showMessage((currentLanguage === 'ja' ? '設定失敗: ' : '设置失败: ') + describeAccountError(error), 'error');
+    });
+}
+
+// ==================== KHẮC PHỤC LỖI: reset toàn bộ dữ liệu đăng nhập của 1 nhân viên ====================
+// Dùng khi việc tạo/gia hạn tài khoản bị lỗi giữa chừng (mất mạng, thiếu quyền Firebase Rules...)
+// để lại dữ liệu "nửa vời" khiến các lần thử sau cứ báo lỗi liên tục (VD: "ID đã được sử dụng",
+// "Permission denied"...). Khác với nút "アカウントを完全に削除" (giữ ID không cho dùng lại),
+// nút này XOÁ SẠCH luôn cả loginUsername để ID được giải phóng, admin có thể tạo lại từ đầu.
+// Lưu ý: không xoá được tài khoản Firebase Auth "mồ côi" từ phía client (giới hạn bảo mật của
+// Firebase), nhưng vì không còn gì trỏ tới nó nữa nên hoàn toàn vô hại, có thể bỏ qua.
+function resetEmployeeAccountData(employeeId) {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee) return;
+
+    const confirmMsg = currentLanguage === 'ja'
+        ? `${employee.name} のログイン情報を完全にリセットしますか?\n※ 作成・発行がエラーで失敗し続ける場合の復旧専用です。\n※ 現在のID(${employee.loginUsername || '-'})は解放され、次回は新しいIDが発行されます。`
+        : `确定要彻底重置 ${employee.name} 的登录数据吗?\n※ 仅用于创建/发放持续报错时的故障恢复。\n※ 当前ID(${employee.loginUsername || '-'})将被释放，下次会生成新ID。`;
+    if (!confirm(confirmMsg)) return;
+
+    if (!window.database) {
+        showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
+        return;
+    }
+
+    const oldUsername = employee.loginUsername;
+    const multiUpdate = {};
+    multiUpdate[`employees/${employeeId}/uid`] = null;
+    multiUpdate[`employees/${employeeId}/loginEmail`] = null;
+    multiUpdate[`employees/${employeeId}/loginUsername`] = null;
+    multiUpdate[`employees/${employeeId}/loginEmailVersion`] = null;
+    if (oldUsername) {
+        multiUpdate[`loginIndex/${oldUsername.toUpperCase()}`] = null;
+    }
+
+    window.database.ref().update(multiUpdate)
+    .then(() => {
+        showMessage(currentLanguage === 'ja' ? 'リセットしました。もう一度作成をお試しください' : '已重置，请重新尝试创建', 'success');
+        showEmployeeAccountModal(employeeId);
+    })
+    .catch(error => {
+        showMessage((currentLanguage === 'ja' ? 'リセット失敗: ' : '重置失败: ') + describeAccountError(error), 'error');
     });
 }
 

@@ -13,8 +13,37 @@
 10. Kéo-thả (drag & drop) tên nhân viên từ nhóm vị trí này sang nhóm khác để đổi vị trí làm việc.
 11. Tối ưu giao diện mobile: header/nav gọn hơn, thẻ nhân viên chuyển sang lưới 2 cột vuông vắn/gọn hơn (thay vì 1 cột dài dọc như trước), lịch tuần chữ hợp lý hơn.
 12. Số liệu "tổng số người theo vị trí" (ô đầu mỗi ngày trên lịch tuần + phần export text) giờ CHỈ tính nhân viên ca 晚班 (từ 17h trở đi). Nhân viên ca 早班 (trước 17h) vẫn hiển thị bình thường trên lịch nhưng không được cộng vào tổng này nữa.
+13. Trang `staff.html` (đăng nhập nhân viên): làm lại giao diện đăng nhập gọn/hiện đại hơn (icon trong ô nhập, nút hiện/ẩn mật khẩu, bấm Enter đăng nhập được, trạng thái đang xử lý rõ ràng, thông báo lỗi đầy đủ hơn khi mất mạng/quá nhiều lần thử). Màn hình chính (lịch tuần, lịch sử yêu cầu) cũng được nén gọn hơn để đỡ phải cuộn. Áp dụng tương tự cho màn đăng nhập admin trong `index.html`.
+14. Sửa lỗi tạo tài khoản đăng nhập cho nhân viên hay báo "ID đã được sử dụng" / "PERMISSION_DENIED" – xem mục **Khắc phục lỗi tạo/cấp lại tài khoản** bên dưới.
 
 Toàn bộ tính năng cũ được giữ nguyên.
+
+## Khắc phục lỗi tạo/cấp lại tài khoản đăng nhập (quan trọng)
+Trước đây khi bấm "アカウント作成" (tạo tài khoản), hệ thống ghi vào 2 chỗ riêng lẻ trong
+Realtime Database: `employees/{id}` rồi mới tới `loginIndex/{ID}`. Nếu Firebase Rules **chưa**
+cho phép ghi node `loginIndex` (xem mục rules bên dưới), bước ghi thứ 2 sẽ báo lỗi
+`PERMISSION_DENIED`, nhưng bước 1 (`employees/{id}`) và tài khoản Firebase Auth thì **đã được
+tạo xong trước đó rồi** → dữ liệu bị "nửa vời". Lần bấm tạo tiếp theo sẽ báo
+`このIDは既に使われています` (ID đã được dùng) vì tài khoản Auth với ID đó thực ra đã tồn tại.
+
+Đợt này đã sửa tận gốc:
+- Việc ghi `employees/{id}` và `loginIndex/{ID}` giờ được gộp vào **1 lệnh ghi duy nhất**
+  (multi-path update) – nếu rules chặn thì CẢ HAI đều không ghi, không còn tình trạng nửa vời
+  nữa (áp dụng cho cả tạo mới, cấp lại mật khẩu quên, và xoá tài khoản).
+- Nếu vẫn gặp lỗi "ID đã được sử dụng", hệ thống giờ **tự động thử ID kế tiếp** vài lần thay
+  vì bắt phải đóng/mở lại modal.
+- Thông báo lỗi khi thiếu quyền Firebase Rules giờ rõ ràng hơn (chỉ thẳng ra cần bật quyền cho
+  `loginIndex`) thay vì hiện `PERMISSION_DENIED` khó hiểu.
+- **Thêm nút "リセット" (khắc phục lỗi)** ở cuối modal tài khoản (cả màn "tạo mới" lẫn màn "đã
+  có tài khoản") – dùng khi việc tạo/cấp lại vẫn cứ báo lỗi liên tục. Nút này xoá sạch toàn bộ
+  dữ liệu đăng nhập hiện tại của nhân viên đó (kể cả ID) để admin tạo lại từ đầu. Khác với nút
+  "アカウントを完全に削除" (giữ nguyên ID, chỉ khoá không cho đăng nhập nữa – dùng khi nhân
+  viên nghỉ việc), nút "リセット" giải phóng luôn ID để dùng lại, chỉ nên dùng khi có lỗi kỹ
+  thuật thật sự.
+- Nếu vẫn thấy lỗi quyền truy cập, hãy vào Firebase Console → Realtime Database → Rules và
+  kiểm tra lại đúng như mục bên dưới rồi bấm "Publish".
+
+
 
 ## Tạo tài khoản đăng nhập cho nhân viên
 - Mở chi tiết 1 nhân viên → nút "ログインアカウント" (登录账号).
