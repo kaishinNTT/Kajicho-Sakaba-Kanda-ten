@@ -1357,10 +1357,6 @@ body {
         bottom: 0;
         padding-bottom: calc(10px + env(safe-area-inset-bottom));
     }
-    
-    .main-content {
-        padding-bottom: calc(100px + env(safe-area-inset-bottom));
-    }
 }
 
 .quick-action {
@@ -1938,6 +1934,7 @@ body {
     
     .main-content {
         padding: 12px;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
     }
     
     .view-header {
