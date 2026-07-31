@@ -922,7 +922,7 @@ function getDayHeadcount(dateString) {
         // Với NGÀY HÔM NAY: chỉ tính những người ĐANG trong ca làm tại thời điểm hiện tại
         // (ai đã tan làm rồi thì không tính vào tổng nữa). Ngày khác (quá khứ/tương lai)
         // vẫn giữ nguyên logic đếm cả ngày như cũ.
-        if (isToday && !isScheduleCurrentlyActive(s)) return;
+        // if (isToday && !isScheduleCurrentlyActive(s)) return;
         const key = getPositionInfo(s.employeePosition).key;
         result[key] = (result[key] || 0) + 1;
     });
