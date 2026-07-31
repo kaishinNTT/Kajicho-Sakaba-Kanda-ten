@@ -514,6 +514,22 @@ body {
     flex-direction: column;
 }
 
+.position-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 1.17rem;
+    font-weight: 700;
+}
+
+.position-count {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
 .position-cards {
     display: grid;
     grid-template-columns: 1fr;
@@ -1343,7 +1359,7 @@ body {
     }
     
     .main-content {
-        padding-bottom: 96px;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom));
     }
 }
 
@@ -1882,6 +1898,12 @@ body {
         font-size: 1.1rem;
         gap: 8px;
     }
+
+    /* Tên quán ở header quá dài trên iPhone -> chỉ hiện phần tên rút gọn,
+       ẩn phần chi nhánh "神田店" đi (vẫn hiện đầy đủ trên desktop/tablet) */
+    .brand-branch {
+        display: none;
+    }
     
     .header-right {
         width: auto;
@@ -1926,11 +1948,57 @@ body {
     .view-header h2 {
         font-size: 1.15rem;
     }
-    
-    /* Thẻ nhân viên trên điện thoại: chuyển sang lưới 2 cột, mỗi thẻ gọn/vuông hơn
-       thay vì 1 cột dài dọc như trước. Nội dung được thu gọn theo chiều dọc và căn
-       giữa để không bị lệch/tràn ra ngoài trong khung hẹp hơn. */
+
+    /* Gọn lại ô tìm kiếm + thanh lọc vị trí để đỡ chiếm diện tích phía trên */
+    .search-box {
+        margin-bottom: 10px;
+    }
+
+    .search-box input {
+        padding: 12px 14px 12px 42px;
+        font-size: 0.85rem;
+    }
+
+    .search-box i {
+        left: 14px;
+        font-size: 0.85rem;
+    }
+
+    .position-filter {
+        gap: 6px;
+        margin-bottom: 12px;
+        padding: 4px 0 6px;
+    }
+
+    .filter-btn {
+        padding: 8px 12px;
+        font-size: 0.75rem;
+        min-width: auto;
+    }
+
+    /* Khoảng cách giữa các nhóm vị trí (フロント/厨房/ラッカ) gọn hơn */
     .employee-cards {
+        gap: 16px;
+    }
+
+    .position-title {
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        gap: 6px;
+    }
+
+    .position-count {
+        font-size: 10px;
+        padding: 1px 7px;
+    }
+    
+    /* Thẻ nhân viên trên điện thoại: chuyển sang lưới 2 cột (sửa đúng vào
+       .position-cards - lưới thật sự chứa các thẻ - thay vì .employee-cards
+       là container flex bên ngoài không có tác dụng gì với grid-template-columns),
+       mỗi thẻ gọn/vuông hơn thay vì 1 cột dài dọc như trước. Nội dung được thu
+       gọn theo chiều dọc và căn giữa để không bị lệch/tràn ra ngoài trong khung
+       hẹp hơn. */
+    .position-cards {
         grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
@@ -1947,8 +2015,14 @@ body {
         gap: 4px;
     }
     
+    /* Dùng flex + align-items:center thay vì chỉ dựa vào text-align kế thừa,
+       để icon/badge vị trí (employee-position là inline-flex) luôn được căn
+       giữa chuẩn xác, không bị lệch trái như trước trên 1 số trình duyệt/thẻ. */
     .employee-info {
         width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
     
     .employee-arrow {
@@ -2026,35 +2100,104 @@ body {
     }
     
     .weekly-schedule-container {
-        max-height: calc(100vh - 180px - 88px);
+        max-height: calc(100vh - 180px - 88px - env(safe-area-inset-bottom));
     }
     
     .weekly-schedule {
-        max-height: calc(100vh - 180px - 88px);
+        max-height: calc(100vh - 180px - 88px - env(safe-area-inset-bottom));
         padding-bottom: 45px;
     }
-    
+
+    /* Bảng lịch tuần trên iPhone: thu gọn cột tên (đã bỏ bớt nội dung dư thừa
+       nhờ .week-emp-name/.week-emp-position/.week-emp-hours bên dưới) để dành
+       chỗ rộng hơn cho 7 cột ngày, đồng thời hạ chiều cao mỗi hàng xuống rõ rệt
+       (trước đây ép cứng 100px cho mọi hàng dù nội dung ít) để đọc được nhiều
+       ngày/nhân viên hơn trong 1 màn hình mà không cần cuộn quá nhiều. */
     .week-header, .week-row, .week-position-header {
-        grid-template-columns: 84px repeat(7, minmax(0, 1fr));
+        grid-template-columns: 68px repeat(7, minmax(0, 1fr));
     }
     
     .week-cell:first-child, .week-header-cell:first-child {
-        width: 84px;
+        width: 68px;
     }
     
     .week-cell:first-child {
         font-size: 0.7rem;
         padding-left: 6px;
+        padding-right: 2px;
+    }
+
+    .week-row, .week-cell {
+        min-height: 62px;
+    }
+
+    .week-header-cell {
+        padding: 8px 4px;
+    }
+
+    .week-emp-name {
+        font-weight: 700;
+        font-size: 0.72rem;
+        color: var(--dark);
+        margin-bottom: 1px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .week-emp-position {
+        font-size: 0.58rem;
+        color: var(--gray-500);
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .week-emp-hours {
+        font-size: 0.56rem;
+        color: var(--primary);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .week-emp-hours i {
+        font-size: 0.52rem;
+        margin-right: 2px;
     }
     
     .day-schedule-item {
-        font-size: 0.65rem;
-        padding: 4px;
+        font-size: 0.68rem;
+        padding: 3px 2px;
+    }
+
+    /* Icon + giờ bắt đầu/kết thúc hiển thị GỘP THÀNH 1 HÀNG NGANG thay vì xếp
+       dọc từng dòng (icon / giờ vào / giờ ra) như trước - đây là nguyên nhân
+       chính khiến mỗi ô ca làm rất cao, kéo cả bảng lịch tuần dài lê thê trên
+       màn hình hẹp. Chữ vẫn đủ to (0.6rem, đậm) để đọc rõ giờ làm. */
+    .compact-time {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0 2px;
+        line-height: 1.15;
+        font-size: 0.6rem;
+    }
+
+    .compact-time span:first-of-type::after {
+        content: '-';
+        margin: 0 1px;
     }
     
     .shift-period-icon {
         font-size: 0.55rem;
-        margin-bottom: 1px;
+        margin-bottom: 0;
+    }
+
+    .diff-position-badge {
+        margin-top: 1px;
+        font-size: 0.5rem;
+        padding: 0 4px;
     }
     
     .action-buttons {
@@ -2119,14 +2262,30 @@ body {
     }
     
     .week-header, .week-row, .week-position-header {
-        grid-template-columns: 80px repeat(7, minmax(0, 1fr));
+        grid-template-columns: 62px repeat(7, minmax(0, 1fr));
     }
     
+    .week-cell:first-child, .week-header-cell:first-child {
+        width: 62px;
+    }
+
     .week-cell:first-child {
-        width: 80px;
-        font-size: 0.7rem;
+        font-size: 0.68rem;
+        padding-left: 4px;
     }
-    
+
+    .week-row, .week-cell {
+        min-height: 58px;
+    }
+
+    .week-emp-name {
+        font-size: 0.68rem;
+    }
+
+    .week-emp-position {
+        font-size: 0.55rem;
+    }
+
     .lang-btn {
         padding: 6px 12px;
         font-size: 12px;

@@ -848,9 +848,9 @@ function renderEmployeeCards() {
         const title = positionLabel(pos.key);
         html += `
             <div class="position-group">
-                <h3 class="position-title" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--${pos.color});">
+                <h3 class="position-title" style="color: var(--${pos.color});">
                     <i class="fas ${pos.icon}"></i> ${title}
-                    <span class="position-count" style="font-size: 12px; background: var(--${pos.color}-light); color: var(--${pos.color}); padding: 2px 8px; border-radius: 12px;">${groupEmployees.length}</span>
+                    <span class="position-count" style="background: var(--${pos.color}-light); color: var(--${pos.color});">${groupEmployees.length}</span>
                 </h3>
                 <div class="position-cards drop-zone" data-position="${pos.key}"
                      ondragover="handlePositionDragOver(event)"
@@ -2770,10 +2770,10 @@ function buildWeeklyRowHtml(employee, days, schedulesByEmployee) {
     return `
         <div class="week-row">
             <div class="week-cell">
-                <div style="font-weight: 700; font-size: 0.8rem; color: var(--dark); margin-bottom: 2px;">${employee.name}</div>
-                <div style="font-size: 0.7rem; color: var(--gray-500); margin-bottom: 4px;">${positionDisplay}</div>
-                <div style="font-size: 0.65rem; color: var(--primary); font-weight: 600;">
-                    <i class="fas fa-clock" style="font-size: 0.6rem; margin-right: 2px;"></i>
+                <div class="week-emp-name">${employee.name}</div>
+                <div class="week-emp-position">${positionDisplay}</div>
+                <div class="week-emp-hours">
+                    <i class="fas fa-clock"></i>
                     ${weeklyHours}h
                 </div>
             </div>
