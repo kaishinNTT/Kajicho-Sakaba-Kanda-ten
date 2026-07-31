@@ -118,20 +118,72 @@ function toggleStaffLang() {
 }
 
 // ==================== AUTH ====================
-function doLogin() {
-    const rawId = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+let loginInFlight = false; // chặn bấm/submit trùng lặp khi đang xử lý đăng nhập
+
+function showLoginError(msg) {
     const errorBox = document.getElementById('loginError');
-    errorBox.style.display = 'none';
+    document.getElementById('loginErrorText').textContent = msg;
+    errorBox.style.display = 'flex';
+}
+
+function hideLoginError() {
+    document.getElementById('loginError').style.display = 'none';
+}
+
+function setLoginLoading(loading) {
+    const btn = document.getElementById('loginBtn');
+    const icon = document.getElementById('loginBtnIcon');
+    const text = document.getElementById('loginBtnText');
+    btn.disabled = loading;
+    if (loading) {
+        icon.className = 'fas fa-spinner fa-spin';
+        text.textContent = currentLang === 'ja' ? 'ログイン中...' : '登录中...';
+    } else {
+        icon.className = 'fas fa-right-to-bracket';
+        text.innerHTML = '<span data-lang="ja">ログイン</span><span data-lang="zh">登录</span>';
+        applyLangVisibility();
+    }
+}
+
+function toggleLoginPasswordVisibility() {
+    const input = document.getElementById('loginPassword');
+    const icon = document.querySelector('#togglePassBtn i');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+function loginErrorMessage(error) {
+    const code = error && error.code;
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        return currentLang === 'ja' ? 'IDまたはパスワードが正しくありません' : '账号或密码不正确';
+    }
+    if (code === 'auth/too-many-requests') {
+        return currentLang === 'ja' ? '試行回数が多すぎます。しばらくしてからもう一度お試しください' : '尝试次数过多，请稍后再试';
+    }
+    if (code === 'auth/network-request-failed') {
+        return currentLang === 'ja' ? 'ネットワークに接続できません。通信状態をご確認ください' : '网络连接失败，请检查网络后重试';
+    }
+    if (code === 'auth/user-disabled') {
+        return currentLang === 'ja' ? 'このアカウントは無効化されています。店長にお問い合わせください' : '该账号已被停用，请联系店长';
+    }
+    return currentLang === 'ja' ? 'ログインできませんでした。もう一度お試しください' : '登录失败，请重试';
+}
+
+function doLogin() {
+    if (loginInFlight) return; // đang xử lý lần trước, bỏ qua các lần bấm/Enter thêm
+
+    const rawId = document.getElementById('loginId').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    hideLoginError();
 
     if (!rawId || !password) {
-        errorBox.textContent = currentLang === 'ja' ? 'IDとパスワードを入力してください' : '请输入账号和密码';
-        errorBox.style.display = 'block';
+        showLoginError(currentLang === 'ja' ? 'IDとパスワードを入力してください' : '请输入账号和密码');
         return;
     }
 
-    const btn = document.getElementById('loginBtn');
-    btn.disabled = true;
+    loginInFlight = true;
+    setLoginLoading(true);
 
     // Nhân viên chỉ cần nhập ID (VD: KAJICHO01). ID này có thể đang trỏ tới 1 email kỹ thuật
     // đã được "phát hành lại" (sau khi admin bấm nút cấp mật khẩu mới) - tra cứu loginIndex
@@ -148,18 +200,18 @@ function doLogin() {
     lookupPromise.then(indexedEmail => {
         const email = indexedEmail || basePattern;
 
-        window.auth.signInWithEmailAndPassword(email, password)
+        return window.auth.signInWithEmailAndPassword(email, password)
         .catch(error => {
-            let msg = error.message;
-            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-                msg = currentLang === 'ja' ? 'IDまたはパスワードが正しくありません' : '账号或密码不正确';
-            }
-            errorBox.textContent = msg;
-            errorBox.style.display = 'block';
-        })
-        .finally(() => {
-            btn.disabled = false;
+            showLoginError(loginErrorMessage(error));
         });
+    })
+    .catch(error => {
+        // Lỗi ở chính bước tra cứu loginIndex (hiếm, ví dụ mất mạng giữa chừng)
+        showLoginError(loginErrorMessage(error));
+    })
+    .finally(() => {
+        loginInFlight = false;
+        setLoginLoading(false);
     });
 }
 
@@ -365,4 +417,19 @@ function renderRequestsList() {
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
     applyLangVisibility();
+
+    // Cho phép bấm Enter (hoặc nút "Go/Done" trên bàn phím điện thoại) để đăng nhập,
+    // thay vì bắt buộc phải chạm vào nút "ログイン" - trước đây do không có <form> nên
+    // Enter không có tác dụng gì cả.
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            doLogin();
+        });
+    }
+
+    // Tự động focus vào ô ID khi vừa vào trang để nhân viên gõ được ngay
+    const idInput = document.getElementById('loginId');
+    if (idInput) idInput.focus();
 });

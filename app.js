@@ -58,7 +58,57 @@ document.addEventListener('DOMContentLoaded', function() {
     // Trang chính giờ được bảo vệ bằng đăng nhập admin (Firebase Auth). Chỉ khi xác thực
     // xong VÀ đúng quyền admin thì startApp() mới thực sự chạy (xem initAdminAuthGate()).
     initAdminAuthGate();
+
+    // Cho phép bấm Enter để submit form đăng nhập/tạo tài khoản admin, thay vì bắt buộc
+    // phải bấm chuột vào nút (trước đây các nút này là type="button" ngoài <form> nên Enter
+    // không có tác dụng gì).
+    const gateSetupForm = document.getElementById('gateSetupForm');
+    if (gateSetupForm) gateSetupForm.addEventListener('submit', e => { e.preventDefault(); adminSetupSubmit(); });
+    const gateLoginForm = document.getElementById('gateLoginForm');
+    if (gateLoginForm) gateLoginForm.addEventListener('submit', e => { e.preventDefault(); adminLoginSubmit(); });
 });
+
+// Hiện/ẩn mật khẩu trong các ô của cổng đăng nhập admin
+function toggleGatePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    const showing = input.type === 'text';
+    input.type = showing ? 'password' : 'text';
+    icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+// Bật/tắt trạng thái loading cho nút submit của cổng đăng nhập admin (disable + spinner)
+function setGateButtonLoading(btnId, iconId, textId, loading, loadingLabelJa, loadingLabelZh, idleHtml, idleIconClass) {
+    const btn = document.getElementById(btnId);
+    const icon = document.getElementById(iconId);
+    const text = document.getElementById(textId);
+    if (!btn || !icon || !text) return;
+    btn.disabled = loading;
+    if (loading) {
+        icon.className = 'fas fa-spinner fa-spin';
+        text.textContent = currentLanguage === 'ja' ? loadingLabelJa : loadingLabelZh;
+    } else {
+        icon.className = idleIconClass;
+        text.innerHTML = idleHtml;
+        applyLanguageToElement(text);
+    }
+}
+
+// Diễn giải lỗi Firebase Auth dùng chung cho các form đăng nhập/tạo tài khoản admin,
+// để không hiển thị thẳng thông báo lỗi tiếng Anh gốc của Firebase cho người dùng.
+function friendlyAuthErrorMessage(error) {
+    const code = error && error.code;
+    if (code === 'auth/too-many-requests') {
+        return currentLanguage === 'ja' ? '試行回数が多すぎます。しばらくしてからもう一度お試しください' : '尝试次数过多，请稍后再试';
+    }
+    if (code === 'auth/network-request-failed') {
+        return currentLanguage === 'ja' ? 'ネットワークに接続できません。通信状態をご確認ください' : '网络连接失败，请检查网络后重试';
+    }
+    if (code === 'auth/user-disabled') {
+        return currentLanguage === 'ja' ? 'このアカウントは無効化されています' : '该账号已被停用';
+    }
+    return null; // không match case đặc biệt nào -> để hàm gọi tự xử lý message riêng
+}
 
 let appStarted = false;
 function startApp() {
@@ -164,10 +214,12 @@ function initAdminAuthGate() {
     });
 }
 
+let gateSetupInFlight = false;
 function adminSetupSubmit() {
+    if (gateSetupInFlight) return;
     const email = document.getElementById('setupEmail').value.trim();
-    const password = document.getElementById('setupPassword').value;
-    const confirmPassword = document.getElementById('setupPasswordConfirm').value;
+    const password = document.getElementById('setupPassword').value.trim();
+    const confirmPassword = document.getElementById('setupPasswordConfirm').value.trim();
     const errorBox = document.getElementById('setupError');
     errorBox.style.display = 'none';
     
@@ -187,6 +239,12 @@ function adminSetupSubmit() {
         return;
     }
     
+    gateSetupInFlight = true;
+    setGateButtonLoading('setupSubmitBtn', 'setupSubmitIcon', 'setupSubmitText', true,
+        '作成中...', '创建中...',
+        '<span data-lang="ja">管理者アカウントを作成</span><span data-lang="zh">创建管理员账号</span>',
+        'fas fa-user-shield');
+
     // Ở bước setup lần đầu chưa có ai đăng nhập cả nên dùng thẳng app chính cũng an toàn
     // (không có phiên nào để làm mất).
     window.auth.createUserWithEmailAndPassword(email, password)
@@ -194,22 +252,35 @@ function adminSetupSubmit() {
         return window.database.ref(`admins/${cred.user.uid}`).set({ email, createdAt: Date.now() });
     })
     .catch(error => {
-        let msg = error.message;
-        if (error.code === 'auth/email-already-in-use') {
-            msg = currentLanguage === 'ja' ? 'このメールは既に使われています' : '该邮箱已被使用';
-        } else if (error.code === 'auth/weak-password') {
-            msg = currentLanguage === 'ja' ? 'パスワードが弱すぎます' : '密码强度不够';
-        } else if (error.code === 'auth/invalid-email') {
-            msg = currentLanguage === 'ja' ? 'メールアドレスの形式が正しくありません' : '邮箱格式不正确';
+        let msg = friendlyAuthErrorMessage(error);
+        if (!msg) {
+            if (error.code === 'auth/email-already-in-use') {
+                msg = currentLanguage === 'ja' ? 'このメールは既に使われています' : '该邮箱已被使用';
+            } else if (error.code === 'auth/weak-password') {
+                msg = currentLanguage === 'ja' ? 'パスワードが弱すぎます' : '密码强度不够';
+            } else if (error.code === 'auth/invalid-email') {
+                msg = currentLanguage === 'ja' ? 'メールアドレスの形式が正しくありません' : '邮箱格式不正确';
+            } else {
+                msg = error.message;
+            }
         }
         errorBox.textContent = msg;
         errorBox.style.display = 'block';
+    })
+    .finally(() => {
+        gateSetupInFlight = false;
+        setGateButtonLoading('setupSubmitBtn', 'setupSubmitIcon', 'setupSubmitText', false,
+            '', '',
+            '<span data-lang="ja">管理者アカウントを作成</span><span data-lang="zh">创建管理员账号</span>',
+            'fas fa-user-shield');
     });
 }
 
+let gateLoginInFlight = false;
 function adminLoginSubmit() {
+    if (gateLoginInFlight) return;
     const email = document.getElementById('gateEmail').value.trim();
-    const password = document.getElementById('gatePassword').value;
+    const password = document.getElementById('gatePassword').value.trim();
     const errorBox = document.getElementById('loginGateError');
     errorBox.style.display = 'none';
     
@@ -219,14 +290,31 @@ function adminLoginSubmit() {
         return;
     }
     
+    gateLoginInFlight = true;
+    setGateButtonLoading('gateLoginBtn', 'gateLoginIcon', 'gateLoginText', true,
+        'ログイン中...', '登录中...',
+        '<span data-lang="ja">ログイン</span><span data-lang="zh">登录</span>',
+        'fas fa-right-to-bracket');
+
     window.auth.signInWithEmailAndPassword(email, password)
     .catch(error => {
-        let msg = error.message;
-        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-            msg = currentLanguage === 'ja' ? 'メールまたはパスワードが正しくありません' : '邮箱或密码不正确';
+        let msg = friendlyAuthErrorMessage(error);
+        if (!msg) {
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                msg = currentLanguage === 'ja' ? 'メールまたはパスワードが正しくありません' : '邮箱或密码不正确';
+            } else {
+                msg = error.message;
+            }
         }
         errorBox.textContent = msg;
         errorBox.style.display = 'block';
+    })
+    .finally(() => {
+        gateLoginInFlight = false;
+        setGateButtonLoading('gateLoginBtn', 'gateLoginIcon', 'gateLoginText', false,
+            '', '',
+            '<span data-lang="ja">ログイン</span><span data-lang="zh">登录</span>',
+            'fas fa-right-to-bracket');
     });
 }
 
@@ -235,6 +323,8 @@ function adminForgotPassword() {
     const errorBox = document.getElementById('loginGateError');
     
     if (!email) {
+        errorBox.style.background = '';
+        errorBox.style.color = '';
         errorBox.textContent = currentLanguage === 'ja' ? '先にメールアドレスを入力してください' : '请先输入邮箱';
         errorBox.style.display = 'block';
         return;
@@ -252,7 +342,13 @@ function adminForgotPassword() {
     .catch(error => {
         errorBox.style.background = '';
         errorBox.style.color = '';
-        errorBox.textContent = currentLanguage === 'ja' ? '送信失敗: そのメールの登録がありません' : '发送失败：该邮箱未注册';
+        let msg = friendlyAuthErrorMessage(error);
+        if (!msg) {
+            msg = (error.code === 'auth/user-not-found')
+                ? (currentLanguage === 'ja' ? '送信失敗: そのメールの登録がありません' : '发送失败：该邮箱未注册')
+                : (currentLanguage === 'ja' ? '送信失敗: メールアドレスの形式を確認してください' : '发送失败：请检查邮箱格式');
+        }
+        errorBox.textContent = msg;
         errorBox.style.display = 'block';
     });
 }

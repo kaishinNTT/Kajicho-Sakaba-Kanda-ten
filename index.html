@@ -94,6 +94,22 @@
             font-weight: 600;
             cursor: pointer;
         }
+
+        .auth-gate-pass-wrap { position: relative; }
+        .auth-gate-pass-wrap .toggle-pass {
+            position: absolute;
+            right: 4px; top: 50%;
+            transform: translateY(-50%);
+            width: 34px; height: 34px;
+            border: none;
+            background: none;
+            color: var(--gray-400, #94a3b8);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px;
+        }
+        .auth-gate-pass-wrap input { padding-right: 40px; }
+        .auth-gate-box button[type="submit"]:disabled { opacity: 0.7; cursor: default; }
         
         .loading-spinner {
             width: 50px;
@@ -153,52 +169,63 @@
                     <span data-lang="zh" style="display:none">首次设置：请创建管理员账号（建议用真实邮箱，方便忘记密码时找回）</span>
                 </div>
                 <div class="auth-gate-error" id="setupError"></div>
-                <div class="form-group">
-                    <label data-lang="ja">メールアドレス</label>
-                    <label data-lang="zh" style="display:none">邮箱</label>
-                    <input type="email" id="setupEmail" class="input-field" placeholder="you@gmail.com">
-                </div>
-                <div class="form-group">
-                    <label data-lang="ja">パスワード（6文字以上）</label>
-                    <label data-lang="zh" style="display:none">密码（至少6位）</label>
-                    <input type="password" id="setupPassword" class="input-field" placeholder="••••••">
-                </div>
-                <div class="form-group">
-                    <label data-lang="ja">パスワード確認</label>
-                    <label data-lang="zh" style="display:none">确认密码</label>
-                    <input type="password" id="setupPasswordConfirm" class="input-field" placeholder="••••••">
-                </div>
-                <button type="button" class="btn-primary" style="width:100%;" onclick="adminSetupSubmit()">
-                    <i class="fas fa-user-shield"></i>
-                    <span data-lang="ja">管理者アカウントを作成</span>
-                    <span data-lang="zh" style="display:none">创建管理员账号</span>
-                </button>
+                <form id="gateSetupForm">
+                    <div class="form-group">
+                        <label data-lang="ja">メールアドレス</label>
+                        <label data-lang="zh" style="display:none">邮箱</label>
+                        <input type="email" id="setupEmail" class="input-field" placeholder="you@gmail.com" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label data-lang="ja">パスワード（6文字以上）</label>
+                        <label data-lang="zh" style="display:none">密码（至少6位）</label>
+                        <div class="auth-gate-pass-wrap">
+                            <input type="password" id="setupPassword" class="input-field" placeholder="••••••" autocomplete="new-password">
+                            <button type="button" class="toggle-pass" onclick="toggleGatePassword('setupPassword', this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label data-lang="ja">パスワード確認</label>
+                        <label data-lang="zh" style="display:none">确认密码</label>
+                        <div class="auth-gate-pass-wrap">
+                            <input type="password" id="setupPasswordConfirm" class="input-field" placeholder="••••••" autocomplete="new-password">
+                            <button type="button" class="toggle-pass" onclick="toggleGatePassword('setupPasswordConfirm', this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;" id="setupSubmitBtn">
+                        <i class="fas fa-user-shield" id="setupSubmitIcon"></i>
+                        <span id="setupSubmitText"><span data-lang="ja">管理者アカウントを作成</span><span data-lang="zh" style="display:none">创建管理员账号</span></span>
+                    </button>
+                </form>
             </div>
 
             <!-- Màn hình đăng nhập bình thường -->
             <div id="gateLogin" style="display:none;">
                 <div class="auth-gate-error" id="loginGateError"></div>
-                <div class="form-group">
-                    <label data-lang="ja">メールアドレス</label>
-                    <label data-lang="zh" style="display:none">邮箱</label>
-                    <input type="email" id="gateEmail" class="input-field" placeholder="you@gmail.com" autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label data-lang="ja">パスワード</label>
-                    <label data-lang="zh" style="display:none">密码</label>
-                    <input type="password" id="gatePassword" class="input-field" placeholder="••••••" autocomplete="current-password">
-                </div>
-                <button type="button" class="btn-primary" style="width:100%;" onclick="adminLoginSubmit()">
-                    <i class="fas fa-right-to-bracket"></i>
-                    <span data-lang="ja">ログイン</span>
-                    <span data-lang="zh" style="display:none">登录</span>
-                </button>
-                <div style="text-align:center; margin-top:14px;">
-                    <button type="button" class="auth-gate-link" onclick="adminForgotPassword()">
-                        <span data-lang="ja">パスワードをお忘れですか？</span>
-                        <span data-lang="zh" style="display:none">忘记密码？</span>
+                <form id="gateLoginForm">
+                    <div class="form-group">
+                        <label data-lang="ja">メールアドレス</label>
+                        <label data-lang="zh" style="display:none">邮箱</label>
+                        <input type="email" id="gateEmail" class="input-field" placeholder="you@gmail.com" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label data-lang="ja">パスワード</label>
+                        <label data-lang="zh" style="display:none">密码</label>
+                        <div class="auth-gate-pass-wrap">
+                            <input type="password" id="gatePassword" class="input-field" placeholder="••••••" autocomplete="current-password">
+                            <button type="button" class="toggle-pass" onclick="toggleGatePassword('gatePassword', this)" tabindex="-1"><i class="fas fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;" id="gateLoginBtn">
+                        <i class="fas fa-right-to-bracket" id="gateLoginIcon"></i>
+                        <span id="gateLoginText"><span data-lang="ja">ログイン</span><span data-lang="zh" style="display:none">登录</span></span>
                     </button>
-                </div>
+                    <div style="text-align:center; margin-top:14px;">
+                        <button type="button" class="auth-gate-link" onclick="adminForgotPassword()">
+                            <span data-lang="ja">パスワードをお忘れですか？</span>
+                            <span data-lang="zh" style="display:none">忘记密码？</span>
+                        </button>
+                    </div>
+                </form>
             </div>
 
             <!-- Đăng nhập được nhưng không có quyền admin -->
