@@ -929,11 +929,11 @@ function generateEmployeeCard(employee) {
             </div>
             ${generateWeekPatternHtml(employee.id, 0)}
             <div class="employee-card-actions">
-                <button type="button" class="card-action-btn" onclick="quickAddScheduleFor('${employee.id}')">
+                <button type="button" class="card-action-btn" onclick="quickAddScheduleFor('${employee.id}')" title="${currentLanguage === 'ja' ? 'クイック登録' : '快速排班'}">
                     <i class="fas fa-calendar-plus"></i>
                     <span>${currentLanguage === 'ja' ? 'クイック登録' : '快速排班'}</span>
                 </button>
-                <button type="button" class="card-action-btn" onclick="copyScheduleAsText('${employee.id}')">
+                <button type="button" class="card-action-btn" onclick="copyScheduleAsText('${employee.id}')" title="${currentLanguage === 'ja' ? 'コピー' : '复制'}">
                     <i class="fas fa-copy"></i>
                     <span>${currentLanguage === 'ja' ? 'コピー' : '复制'}</span>
                 </button>
@@ -1365,10 +1365,15 @@ function copyAllScheduleToNextWeek() {
 // ==================== TÀI KHOẢN ĐĂNG NHẬP CHO NHÂN VIÊN (Firebase Authentication) ====================
 // ID đăng nhập dạng cố định (KAJICHO01, KAJICHO02...) + mật khẩu tự sinh ngẫu nhiên bảo mật,
 // admin chỉ cần bấm "コピー" rồi gửi cho nhân viên - không cần tự nghĩ/nhập email hay mật khẩu.
-function generateNextStaffUsername() {
+//
+// LƯU Ý QUAN TRỌNG: mọi thao tác sinh ID mới / kiểm tra trùng ID đều đọc dữ liệu MỚI NHẤT
+// trực tiếp từ Firebase (không dùng biến `employees` trong bộ nhớ), vì biến đó có thể chưa
+// kịp đồng bộ nếu admin thao tác nhanh liên tiếp hoặc có nhiều tab/nhiều admin cùng lúc -
+// đây chính là nguyên nhân gây trùng ID / tài khoản không đăng nhập được trước đây.
+function generateNextStaffUsernameFromList(list) {
     let maxNum = 0;
     const pattern = new RegExp('^' + STAFF_ACCOUNT_PREFIX + '(\\d+)$', 'i');
-    employees.forEach(e => {
+    (list || []).forEach(e => {
         if (e && e.loginUsername) {
             const m = String(e.loginUsername).match(pattern);
             if (m) {
@@ -1380,6 +1385,24 @@ function generateNextStaffUsername() {
     const next = maxNum + 1;
     const padded = String(next).padStart(2, '0');
     return `${STAFF_ACCOUNT_PREFIX}${padded}`;
+}
+
+function setLoginIndexEntry(username, technicalEmail) {
+    if (!window.database || !username) return Promise.resolve();
+    return window.database.ref(`loginIndex/${username.toUpperCase()}`).set(technicalEmail);
+}
+
+function clearLoginIndexEntry(username) {
+    if (!window.database || !username) return Promise.resolve();
+    return window.database.ref(`loginIndex/${username.toUpperCase()}`).remove();
+}
+
+function fetchFreshEmployeesList() {
+    if (!window.database) return Promise.reject(new Error(currentLanguage === 'ja' ? 'データベース接続エラー' : '数据库连接错误'));
+    return window.database.ref('employees').once('value').then(snapshot => {
+        const data = snapshot.val() || {};
+        return Object.keys(data).map(id => ({ id, ...data[id] }));
+    });
 }
 
 function secureRandomIndex(max) {
@@ -1438,84 +1461,158 @@ function copyStaffAccountCredentials(employeeId) {
     }
 }
 
-function showEmployeeAccountModal(employeeId) {
+function copyExistingAccountCredentials(employeeId, password) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
-    
+    const displayId = employee.loginUsername || employee.loginEmail;
+    const text = currentLanguage === 'ja'
+        ? `【${employee.name} 様 ログイン情報】\nID: ${displayId}\nパスワード: ${password}`
+        : `【${employee.name} 登录信息】\n账号: ${displayId}\n密码: ${password}`;
+
+    const done = () => showMessage(currentLanguage === 'ja' ? 'コピーしました' : '已复制', 'success');
+    const fail = () => showMessage(currentLanguage === 'ja' ? 'コピー失敗' : '复制失败', 'error');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(fail);
+    } else {
+        fail();
+    }
+}
+
+function showEmployeeAccountModal(employeeId) {
+    const cachedEmployee = employees.find(e => e.id === employeeId);
+    if (!cachedEmployee) return;
+
+    pendingStaffAccount = null;
     const body = document.getElementById('accountModalBody');
     if (!body) return;
-    
-    if (employee.uid && employee.loginEmail) {
-        pendingStaffAccount = null;
-        const displayId = employee.loginUsername || employee.loginEmail;
-        body.innerHTML = `
-            <div style="text-align:center; margin-bottom: 20px;">
-                <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
-                <div style="font-weight:700; color: var(--dark);">${employee.name}</div>
-            </div>
-            <div style="background: var(--success-light); border: 1px solid rgba(16,185,129,0.3); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px;">
-                <div style="display:flex; align-items:center; gap:8px; color: var(--success); font-weight:700; margin-bottom: 6px;">
-                    <i class="fas fa-circle-check"></i>
-                    <span data-lang="ja">アカウント設定済み</span><span data-lang="zh" style="display:none">已设置账号</span>
-                </div>
-                <div style="font-size: 13px; color: var(--gray-600);">
-                    <span data-lang="ja">ログインID</span><span data-lang="zh" style="display:none">登录账号</span>: <strong>${displayId}</strong>
-                </div>
-            </div>
-            <p style="font-size:12px; color: var(--gray-500); margin-bottom:16px;">
-                <span data-lang="ja">※ パスワードを忘れた場合は、リンク解除後に新しいIDで再作成してください(クライアント側の制約でパスワードの直接変更はできません)。</span>
-                <span data-lang="zh" style="display:none">※ 如果忘记密码，请先解除关联，再用新的账号重新创建(受客户端限制，无法直接修改密码)。</span>
-            </p>
-            <button type="button" class="btn-secondary" style="width:100%;" onclick="unlinkEmployeeAccount('${employeeId}')">
-                <i class="fas fa-link-slash"></i>
-                <span data-lang="ja">リンク解除</span><span data-lang="zh" style="display:none">解除关联</span>
-            </button>
-        `;
-    } else {
-        pendingStaffAccount = {
-            username: generateNextStaffUsername(),
-            password: generateSecureStaffPassword()
-        };
-        body.innerHTML = `
-            <div style="text-align:center; margin-bottom: 20px;">
-                <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
-                <div style="font-weight:700; color: var(--dark);">${employee.name}</div>
-                <div style="font-size:12px; color: var(--gray-400); margin-top:4px;">
-                    <span data-lang="ja">まだログインアカウントがありません</span><span data-lang="zh" style="display:none">还没有登录账号</span>
-                </div>
-            </div>
-            <div class="form-group">
-                <label data-lang="ja">ログインID(自動生成)</label>
-                <label data-lang="zh" style="display:none">登录账号(自动生成)</label>
-                <input type="text" id="newAccountUsernameDisplay" class="input-field" value="${pendingStaffAccount.username}" readonly style="font-weight:700; letter-spacing:0.5px;">
-            </div>
-            <div class="form-group">
-                <label data-lang="ja">パスワード(自動生成)</label>
-                <label data-lang="zh" style="display:none">密码(自动生成)</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="newAccountPasswordDisplay" class="input-field" value="${pendingStaffAccount.password}" readonly style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
-                    <button type="button" class="btn-secondary" style="flex-shrink:0; padding:0 14px;" onclick="regenerateStaffAccountFields()" title="${currentLanguage === 'ja' ? 'パスワードを再生成' : '重新生成密码'}">
-                        <i class="fas fa-rotate"></i>
-                    </button>
-                </div>
-            </div>
-            <button type="button" class="btn-secondary" style="width:100%; margin-bottom:10px;" onclick="copyStaffAccountCredentials('${employeeId}')">
-                <i class="fas fa-copy"></i>
-                <span data-lang="ja">ID・パスワードをコピー</span><span data-lang="zh" style="display:none">复制账号和密码</span>
-            </button>
-            <button type="button" class="btn-primary" style="width:100%;" onclick="createEmployeeAccount('${employeeId}')">
-                <i class="fas fa-user-plus"></i>
-                <span data-lang="ja">アカウント作成</span><span data-lang="zh" style="display:none">创建账号</span>
-            </button>
-            <p style="font-size:11px; color: var(--gray-400); margin-top:12px;">
-                <span data-lang="ja">※ 作成後はこの画面でパスワードを再確認できません。必ず作成前にコピーしてスタッフに渡してください。</span>
-                <span data-lang="zh" style="display:none">※ 创建后将无法在此重新查看密码，请务必在创建前先复制并交给员工。</span>
-            </p>
-        `;
-    }
-    
-    applyLanguageToElement(body);
+
+    body.innerHTML = `<div style="text-align:center; padding: 40px 0; color: var(--gray-400);"><i class="fas fa-spinner fa-spin" style="font-size:22px;"></i></div>`;
     openModal('accountModal');
+
+    // Luôn đọc dữ liệu MỚI NHẤT từ Firebase trước khi hiển thị / sinh ID mới (xem lưu ý phía trên)
+    fetchFreshEmployeesList()
+    .then(freshList => {
+        // Nếu admin đã đóng modal hoặc chuyển sang xem nhân viên khác trong lúc chờ tải thì bỏ qua
+        const modalEl = document.getElementById('accountModal');
+        if (!modalEl || modalEl.style.display === 'none') return;
+        const freshEmployee = freshList.find(e => e.id === employeeId) || cachedEmployee;
+
+        if (freshEmployee.uid && freshEmployee.loginEmail) {
+            renderAccountExistsView(employeeId, freshEmployee);
+        } else {
+            pendingStaffAccount = {
+                mode: 'new',
+                username: generateNextStaffUsernameFromList(freshList),
+                password: generateSecureStaffPassword()
+            };
+            renderNewAccountForm(employeeId, freshEmployee);
+        }
+    })
+    .catch(error => {
+        body.innerHTML = `<div style="text-align:center; padding: 20px 0; color: #ef4444;">${(currentLanguage === 'ja' ? '読み込みエラー: ' : '加载错误: ') + error.message}</div>`;
+    });
+}
+
+function renderAccountExistsView(employeeId, employee, justIssuedPassword) {
+    const body = document.getElementById('accountModalBody');
+    if (!body) return;
+    const displayId = employee.loginUsername || employee.loginEmail;
+
+    const justIssuedHtml = justIssuedPassword ? `
+        <div style="background: var(--info-light); border: 1px solid rgba(37,99,235,0.3); border-radius: var(--border-radius); padding: 14px; margin-bottom: 16px;">
+            <div style="font-size:12px; color: var(--gray-600); margin-bottom:6px;">
+                <span data-lang="ja">新しいパスワード(今すぐコピーしてください)</span><span data-lang="zh" style="display:none">新密码(请立即复制)</span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" class="input-field" value="${justIssuedPassword}" readonly style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
+                <button type="button" class="btn-secondary" style="flex-shrink:0; padding:0 14px;" onclick="copyExistingAccountCredentials('${employeeId}', '${justIssuedPassword}')" title="${currentLanguage === 'ja' ? 'コピー' : '复制'}">
+                    <i class="fas fa-copy"></i>
+                </button>
+            </div>
+        </div>
+    ` : '';
+
+    const reissueSectionHtml = employee.loginUsername ? `
+        <button type="button" class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="reissueStaffPassword('${employeeId}')">
+            <i class="fas fa-key"></i>
+            <span data-lang="ja">パスワードを忘れた場合(新規発行)</span><span data-lang="zh" style="display:none">忘记密码(重新发放)</span>
+        </button>
+        <p style="font-size:11px; color: var(--gray-400); margin-bottom:12px;">
+            <span data-lang="ja">※ ログインIDはそのまま変わらず、新しいパスワードだけ発行されます。発行後は必ずコピーしてスタッフに渡してください。</span>
+            <span data-lang="zh" style="display:none">※ 登录账号保持不变，仅生成新密码。发放后请务必复制并交给员工。</span>
+        </p>
+    ` : `
+        <p style="font-size:12px; color: var(--gray-500); margin-bottom:16px;">
+            <span data-lang="ja">※ この古いアカウントは以前の方式(メール直接入力)で作られています。パスワードを再発行するには一度「完全に削除」してから作り直してください。</span>
+            <span data-lang="zh" style="display:none">※ 该账号是用旧的方式(直接输入邮箱)创建的。如需重设密码，请先「彻底删除」后重新创建。</span>
+        </p>
+    `;
+
+    body.innerHTML = `
+        <div style="text-align:center; margin-bottom: 20px;">
+            <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
+            <div style="font-weight:700; color: var(--dark);">${employee.name}</div>
+        </div>
+        <div style="background: var(--success-light); border: 1px solid rgba(16,185,129,0.3); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px;">
+            <div style="display:flex; align-items:center; gap:8px; color: var(--success); font-weight:700; margin-bottom: 6px;">
+                <i class="fas fa-circle-check"></i>
+                <span data-lang="ja">アカウント設定済み</span><span data-lang="zh" style="display:none">已设置账号</span>
+            </div>
+            <div style="font-size: 13px; color: var(--gray-600);">
+                <span data-lang="ja">ログインID</span><span data-lang="zh" style="display:none">登录账号</span>: <strong>${displayId}</strong>
+            </div>
+        </div>
+        ${justIssuedHtml}
+        ${reissueSectionHtml}
+        <button type="button" class="btn-secondary" style="width:100%;" onclick="unlinkEmployeeAccount('${employeeId}')">
+            <i class="fas fa-link-slash"></i>
+            <span data-lang="ja">アカウントを完全に削除</span><span data-lang="zh" style="display:none">彻底删除账号关联</span>
+        </button>
+    `;
+    applyLanguageToElement(body);
+}
+
+function renderNewAccountForm(employeeId, employee) {
+    const body = document.getElementById('accountModalBody');
+    if (!body || !pendingStaffAccount) return;
+    body.innerHTML = `
+        <div style="text-align:center; margin-bottom: 20px;">
+            <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
+            <div style="font-weight:700; color: var(--dark);">${employee.name}</div>
+            <div style="font-size:12px; color: var(--gray-400); margin-top:4px;">
+                <span data-lang="ja">まだログインアカウントがありません</span><span data-lang="zh" style="display:none">还没有登录账号</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label data-lang="ja">ログインID(自動生成)</label>
+            <label data-lang="zh" style="display:none">登录账号(自动生成)</label>
+            <input type="text" id="newAccountUsernameDisplay" class="input-field" value="${pendingStaffAccount.username}" readonly style="font-weight:700; letter-spacing:0.5px;">
+        </div>
+        <div class="form-group">
+            <label data-lang="ja">パスワード(自動生成)</label>
+            <label data-lang="zh" style="display:none">密码(自动生成)</label>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="newAccountPasswordDisplay" class="input-field" value="${pendingStaffAccount.password}" readonly style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
+                <button type="button" class="btn-secondary" style="flex-shrink:0; padding:0 14px;" onclick="regenerateStaffAccountFields()" title="${currentLanguage === 'ja' ? 'パスワードを再生成' : '重新生成密码'}">
+                    <i class="fas fa-rotate"></i>
+                </button>
+            </div>
+        </div>
+        <button type="button" class="btn-secondary" style="width:100%; margin-bottom:10px;" onclick="copyStaffAccountCredentials('${employeeId}')">
+            <i class="fas fa-copy"></i>
+            <span data-lang="ja">ID・パスワードをコピー</span><span data-lang="zh" style="display:none">复制账号和密码</span>
+        </button>
+        <button type="button" class="btn-primary" style="width:100%;" onclick="createEmployeeAccount('${employeeId}')">
+            <i class="fas fa-user-plus"></i>
+            <span data-lang="ja">アカウント作成</span><span data-lang="zh" style="display:none">创建账号</span>
+        </button>
+        <p style="font-size:11px; color: var(--gray-400); margin-top:12px;">
+            <span data-lang="ja">※ 作成後はこの画面でパスワードを再確認できません。必ず作成前にコピーしてスタッフに渡してください。</span>
+            <span data-lang="zh" style="display:none">※ 创建后将无法在此重新查看密码，请务必在创建前先复制并交给员工。</span>
+        </p>
+    `;
+    applyLanguageToElement(body);
 }
 
 // Áp dụng lại trạng thái ẩn/hiện data-lang cho nội dung vừa render động (vì nội dung này
@@ -1531,40 +1628,67 @@ function applyLanguageToElement(container) {
 function createEmployeeAccount(employeeId) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
-    
-    if (!pendingStaffAccount || !pendingStaffAccount.username || !pendingStaffAccount.password) {
+
+    if (!pendingStaffAccount || pendingStaffAccount.mode !== 'new' || !pendingStaffAccount.username || !pendingStaffAccount.password) {
         showMessage(currentLanguage === 'ja' ? 'エラーが発生しました。もう一度開き直してください' : '发生错误，请重新打开此窗口', 'error');
         return;
     }
-    
+
     if (!window.secondaryApp || !window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
         return;
     }
-    
-    const username = pendingStaffAccount.username;
+
+    const attemptedUsername = pendingStaffAccount.username;
     const password = pendingStaffAccount.password;
-    // ID hiển thị cho nhân viên (VD: KAJICHO01) được ghép thêm domain giả cố định để thỏa
-    // định dạng email mà Firebase Auth yêu cầu - nhân viên không cần biết tới domain này.
-    const technicalEmail = `${username.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
-    
-    // Dùng app phụ (secondaryApp) để tạo tài khoản, tránh làm mất phiên đăng nhập hiện tại
-    window.secondaryApp.auth().createUserWithEmailAndPassword(technicalEmail, password)
-    .then(cred => {
-        const uid = cred.user.uid;
-        return window.secondaryApp.auth().signOut().then(() => uid);
-    })
-    .then(uid => {
-        return window.database.ref(`employees/${employeeId}`).update({
-            uid: uid,
-            loginEmail: technicalEmail,
-            loginUsername: username
+
+    // Kiểm tra lại 1 lần nữa với dữ liệu MỚI NHẤT ngay trước khi tạo, để tránh trường hợp
+    // 2 nhân viên bị gán trùng ID khi admin thao tác nhanh liên tiếp / nhiều tab cùng lúc.
+    fetchFreshEmployeesList()
+    .then(freshList => {
+        const stillTaken = freshList.some(e => e.id !== employeeId && e.loginUsername && e.loginUsername.toUpperCase() === attemptedUsername.toUpperCase());
+
+        if (stillTaken) {
+            pendingStaffAccount.username = generateNextStaffUsernameFromList(freshList);
+            renderNewAccountForm(employeeId, employee);
+            showMessage(currentLanguage === 'ja'
+                ? 'このIDは既に使われたため、新しいIDを再生成しました。内容を確認してもう一度作成してください'
+                : '该ID刚被占用，已重新生成新ID，请确认后重新点击创建', 'warning');
+            return null; // dừng lại, không tạo lúc này - đợi admin xác nhận ID mới rồi bấm lại
+        }
+
+        const username = attemptedUsername;
+        // ID hiển thị cho nhân viên (VD: KAJICHO01) được ghép thêm domain giả cố định để thỏa
+        // định dạng email mà Firebase Auth yêu cầu - nhân viên không cần biết tới domain này.
+        const technicalEmail = `${username.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
+
+        // Dùng app phụ (secondaryApp) để tạo tài khoản, tránh làm mất phiên đăng nhập hiện tại
+        return window.secondaryApp.auth().createUserWithEmailAndPassword(technicalEmail, password)
+        .then(cred => {
+            const uid = cred.user.uid;
+            return window.secondaryApp.auth().signOut().then(() => uid);
+        })
+        .then(uid => {
+            return window.database.ref(`employees/${employeeId}`).update({
+                uid: uid,
+                loginEmail: technicalEmail,
+                loginUsername: username
+            }).then(() => setLoginIndexEntry(username, technicalEmail))
+              .then(() => ({ uid, technicalEmail, username }));
         });
     })
-    .then(() => {
+    .then(result => {
+        if (!result) return; // đã dừng ở bước kiểm tra trùng ID phía trên
         showMessage(currentLanguage === 'ja' ? 'アカウントを作成しました' : '账号创建成功', 'success');
+        // Hiển thị màn hình "đã có tài khoản" trực tiếp từ dữ liệu VỪA GHI (không đợi cache
+        // `employees` đồng bộ lại) - đây chính là chỗ trước đây gây hiển thị sai/tạo trùng.
+        const updatedEmployee = Object.assign({}, employee, {
+            uid: result.uid,
+            loginEmail: result.technicalEmail,
+            loginUsername: result.username
+        });
         pendingStaffAccount = null;
-        showEmployeeAccountModal(employeeId);
+        renderAccountExistsView(employeeId, updatedEmployee);
     })
     .catch(error => {
         let msg = error.message;
@@ -1577,13 +1701,58 @@ function createEmployeeAccount(employeeId) {
     });
 }
 
+function reissueStaffPassword(employeeId) {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee || !employee.loginUsername) return;
+
+    const confirmMsg = currentLanguage === 'ja'
+        ? `${employee.name} の新しいパスワードを発行しますか?(古いパスワードは無効になります。ログインIDは変わりません)`
+        : `确定要为 ${employee.name} 发放新密码吗?(旧密码将失效，登录账号不变)`;
+    if (!confirm(confirmMsg)) return;
+
+    if (!window.secondaryApp || !window.database) {
+        showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
+        return;
+    }
+
+    const username = employee.loginUsername;
+    const newPassword = generateSecureStaffPassword();
+    // Firebase không cho phép xoá/đổi mật khẩu của user khác từ client, nên tài khoản Auth cũ
+    // (mật khẩu quên) sẽ bị "mồ côi" và không dùng được nữa; ta tạo 1 tài khoản Auth MỚI với
+    // cùng ID hiển thị nhưng email kỹ thuật tăng version (+1, +2...) để tránh trùng, rồi trỏ
+    // lại employees/{id} sang tài khoản mới này - nhân viên vẫn đăng nhập bằng đúng ID cũ.
+    const version = (employee.loginEmailVersion || 0) + 1;
+    const newTechnicalEmail = `${username.toLowerCase()}+${version}${STAFF_LOGIN_DOMAIN}`;
+
+    window.secondaryApp.auth().createUserWithEmailAndPassword(newTechnicalEmail, newPassword)
+    .then(cred => {
+        const uid = cred.user.uid;
+        return window.secondaryApp.auth().signOut().then(() => uid);
+    })
+    .then(uid => {
+        return window.database.ref(`employees/${employeeId}`).update({
+            uid: uid,
+            loginEmail: newTechnicalEmail,
+            loginEmailVersion: version
+        }).then(() => setLoginIndexEntry(username, newTechnicalEmail));
+    })
+    .then(() => {
+        showMessage(currentLanguage === 'ja' ? '新しいパスワードを発行しました' : '已发放新密码', 'success');
+        const updatedEmployee = Object.assign({}, employee, { loginEmail: newTechnicalEmail, loginEmailVersion: version });
+        renderAccountExistsView(employeeId, updatedEmployee, newPassword);
+    })
+    .catch(error => {
+        showMessage((currentLanguage === 'ja' ? '発行失敗: ' : '发放失败: ') + error.message, 'error');
+    });
+}
+
 function unlinkEmployeeAccount(employeeId) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee) return;
     
     const confirmMsg = currentLanguage === 'ja' 
-        ? `${employee.name} のログインアカウントのリンクを解除しますか?`
-        : `确定要解除 ${employee.name} 的登录账号关联吗?`;
+        ? `${employee.name} のログインアカウントを完全に削除しますか?`
+        : `确定要彻底删除 ${employee.name} 的登录账号吗?`;
     if (!confirm(confirmMsg)) return;
     
     if (!window.database) {
@@ -1592,8 +1761,9 @@ function unlinkEmployeeAccount(employeeId) {
     }
     
     window.database.ref(`employees/${employeeId}`).update({ uid: null, loginEmail: null })
+    .then(() => clearLoginIndexEntry(employee.loginUsername))
     .then(() => {
-        showMessage(currentLanguage === 'ja' ? 'リンクを解除しました' : '已解除关联', 'success');
+        showMessage(currentLanguage === 'ja' ? '削除しました' : '已删除', 'success');
         showEmployeeAccountModal(employeeId);
     })
     .catch(error => {

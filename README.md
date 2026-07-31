@@ -11,18 +11,27 @@
 8. Màu sắc phân biệt rõ 早班 (xanh dương) / 晚班 (tím) trên cả lịch tuần và pattern tuần trên thẻ nhân viên.
 9. "整周排班" (Quick Week Schedule) chỉ còn 2 lựa chọn: 早班 (08:00-17:00) và 晚班 (17:00-00:00).
 10. Kéo-thả (drag & drop) tên nhân viên từ nhóm vị trí này sang nhóm khác để đổi vị trí làm việc.
-11. Tối ưu giao diện mobile: header/nav gọn hơn, card nhân viên compact hơn, lịch tuần chữ hợp lý hơn.
+11. Tối ưu giao diện mobile: header/nav gọn hơn, thẻ nhân viên chuyển sang lưới 2 cột vuông vắn/gọn hơn (thay vì 1 cột dài dọc như trước), lịch tuần chữ hợp lý hơn.
 12. Số liệu "tổng số người theo vị trí" (ô đầu mỗi ngày trên lịch tuần + phần export text) giờ CHỈ tính nhân viên ca 晚班 (từ 17h trở đi). Nhân viên ca 早班 (trước 17h) vẫn hiển thị bình thường trên lịch nhưng không được cộng vào tổng này nữa.
 
 Toàn bộ tính năng cũ được giữ nguyên.
 
 ## Tạo tài khoản đăng nhập cho nhân viên
 - Mở chi tiết 1 nhân viên → nút "ログインアカウント" (登录账号).
-- ID đăng nhập được TỰ ĐỘNG sinh theo mẫu cố định `KAJICHO01`, `KAJICHO02`... (tăng dần, không trùng), mật khẩu cũng được tự sinh ngẫu nhiên đủ mạnh (hoa/thường/số/ký tự đặc biệt) - admin không cần tự nghĩ/nhập gì cả.
+- ID đăng nhập được TỰ ĐỘNG sinh theo mẫu cố định `KAJICHO01`, `KAJICHO02`... (tăng dần, không trùng - luôn kiểm tra lại với dữ liệu MỚI NHẤT trên Firebase ngay trước khi tạo, để tránh trường hợp 2 nhân viên bị gán trùng ID khi thao tác nhanh liên tiếp), mật khẩu cũng được tự sinh ngẫu nhiên đủ mạnh (hoa/thường/số/ký tự đặc biệt) - admin không cần tự nghĩ/nhập gì cả.
 - Có nút 🔄 để sinh lại mật khẩu mới nếu muốn, và nút "ID・パスワードをコピー" để copy cả ID + mật khẩu rồi gửi cho nhân viên. Sau khi bấm "アカウント作成" thì KHÔNG thể xem lại mật khẩu ở màn hình này nữa (đúng theo giới hạn bảo mật của Firebase phía client), nên nhớ copy trước khi tạo.
+- **Quên mật khẩu**: khi nhân viên đã có tài khoản, mở lại modal này sẽ thấy nút "パスワードを忘れた場合(新規発行)" - bấm vào sẽ TỰ ĐỘNG sinh 1 mật khẩu mới và cấp lại ngay, **ID đăng nhập giữ nguyên không đổi**, chỉ cần copy mật khẩu mới gửi cho nhân viên là đăng nhập lại được. (Về mặt kỹ thuật: do Firebase phía client không cho đổi mật khẩu của người khác, hệ thống tạo 1 tài khoản Firebase mới đứng sau cùng 1 ID hiển thị, thông qua bảng tra cứu `loginIndex` trong Realtime Database - xem lưu ý rule bên dưới).
+- Nút "アカウントを完全に削除" (trước đây là "リンク解除") dùng khi muốn vô hiệu hoá hẳn tài khoản của nhân viên (ví dụ nghỉ việc) - lúc đó ID đó sẽ không đăng nhập được nữa và cũng không được cấp phát lại cho người khác.
 - Cần đã bật Email/Password ở Firebase Console → Authentication → Sign-in method (ID của nhân viên được ghép thêm 1 domain giả cố định ở phía sau để thỏa định dạng email mà Firebase yêu cầu - nhân viên không cần biết và không cần nhập domain này).
+- **Lưu ý về Firebase Rules**: bản này có thêm 1 node mới `loginIndex` trong Realtime Database (dùng để trang staff.html tra cứu đúng tài khoản hiện tại khi ID không đổi nhưng mật khẩu đã được cấp lại). Cần đảm bảo node này ĐỌC được mà không cần đăng nhập trước (giống các node `employees`/`schedules` hiện tại), ví dụ trong Firebase Rules:
+  ```json
+  "loginIndex": {
+    ".read": true,
+    ".write": true
+  }
+  ```
+  Nếu rules hiện tại đã để mở toàn bộ database (`.read`/`.write`: true ở gốc) thì không cần chỉnh gì thêm.
 - Lưu ý kỹ thuật: 3 file Firebase SDK (app/database/auth) giờ tải qua CDN chính thức của Google (gstatic.com) thay vì host cục bộ như trước, vì file auth-compat.js quá lớn để nhúng trực tiếp. 2 file cục bộ cũ (firebase-app-compat.js, firebase-database-compat.js) không còn được dùng, có thể xoá khỏi thư mục hosting nếu muốn dọn dẹp.
-- Do giới hạn của Firebase phía client, admin có thể TẠO tài khoản mới nhưng không thể tự đổi mật khẩu người khác trực tiếp — nếu nhân viên quên mật khẩu, cần bấm "リンク解除" (解除关联) rồi tạo lại tài khoản mới (sẽ nhận 1 ID mới, VD KAJICHO05).
 
 ## Trang riêng cho nhân viên (staff.html)
 Nhân viên vào file `staff.html` (ví dụ: `https://<domain-cua-ban>/staff.html`) để:

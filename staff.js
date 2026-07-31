@@ -130,24 +130,36 @@ function doLogin() {
         return;
     }
 
-    // Nhân viên chỉ cần nhập ID (VD: KAJICHO01) - tự ghép domain giả để đăng nhập Firebase.
-    // Nếu ID đã có dạng email đầy đủ (tài khoản cũ tạo trước khi có tính năng này) thì giữ nguyên.
-    const email = rawId.includes('@') ? rawId : `${rawId.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
-
     const btn = document.getElementById('loginBtn');
     btn.disabled = true;
 
-    window.auth.signInWithEmailAndPassword(email, password)
-    .catch(error => {
-        let msg = error.message;
-        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
-            msg = currentLang === 'ja' ? 'IDまたはパスワードが正しくありません' : '账号或密码不正确';
-        }
-        errorBox.textContent = msg;
-        errorBox.style.display = 'block';
-    })
-    .finally(() => {
-        btn.disabled = false;
+    // Nhân viên chỉ cần nhập ID (VD: KAJICHO01). ID này có thể đang trỏ tới 1 email kỹ thuật
+    // đã được "phát hành lại" (sau khi admin bấm nút cấp mật khẩu mới) - tra cứu loginIndex
+    // trước để lấy đúng email hiện tại; nếu không có trong index (tài khoản tạo lần đầu, chưa
+    // từng đổi mật khẩu) thì dùng luôn mẫu email cơ bản. Nếu ID đã có dạng email đầy đủ (tài
+    // khoản cũ tạo trước khi có tính năng ID cố định) thì giữ nguyên, không tra cứu.
+    const basePattern = rawId.includes('@') ? rawId : `${rawId.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
+    const lookupPromise = rawId.includes('@')
+        ? Promise.resolve(null)
+        : window.database.ref(`loginIndex/${rawId.toUpperCase()}`).once('value')
+            .then(snap => snap.val())
+            .catch(() => null); // không đọc được (chưa cấu hình rule, hoặc chưa có entry) -> dùng fallback
+
+    lookupPromise.then(indexedEmail => {
+        const email = indexedEmail || basePattern;
+
+        window.auth.signInWithEmailAndPassword(email, password)
+        .catch(error => {
+            let msg = error.message;
+            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+                msg = currentLang === 'ja' ? 'IDまたはパスワードが正しくありません' : '账号或密码不正确';
+            }
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        })
+        .finally(() => {
+            btn.disabled = false;
+        });
     });
 }
 

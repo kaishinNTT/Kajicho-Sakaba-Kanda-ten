@@ -1927,34 +1927,102 @@ body {
         font-size: 1.15rem;
     }
     
+    /* Thẻ nhân viên trên điện thoại: chuyển sang lưới 2 cột, mỗi thẻ gọn/vuông hơn
+       thay vì 1 cột dài dọc như trước. Nội dung được thu gọn theo chiều dọc và căn
+       giữa để không bị lệch/tràn ra ngoài trong khung hẹp hơn. */
     .employee-cards {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .employee-card {
-        padding: 12px;
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
     
+    .employee-card {
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .employee-card-top {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 4px;
+    }
+    
+    .employee-info {
+        width: 100%;
+    }
+    
+    .employee-arrow {
+        display: none;
+    }
+    
     .employee-avatar {
-        width: 46px;
-        height: 46px;
-        font-size: 1rem;
+        width: 42px;
+        height: 42px;
+        font-size: 0.95rem;
     }
     
     .employee-name {
-        font-size: 0.92rem;
+        font-size: 0.82rem;
+        margin-bottom: 3px;
+        max-width: 100%;
     }
     
     .employee-position {
-        font-size: 0.72rem;
-        padding: 5px 10px;
-        margin-bottom: 6px;
+        font-size: 0.62rem;
+        padding: 3px 8px;
+        margin: 0 auto 6px;
+        gap: 5px;
+    }
+    
+    .employee-stats {
+        justify-content: center;
+        gap: 8px;
+        row-gap: 2px;
+    }
+    
+    .stat-item {
+        font-size: 0.62rem;
+        gap: 3px;
+    }
+    
+    .stat-value {
+        font-size: 0.66rem;
+    }
+    
+    /* Bớt 1 mục thống kê (giờ trong tháng) trên thẻ thu gọn để đỡ chật - vẫn xem đầy đủ
+       khi bấm vào thẻ để mở chi tiết nhân viên */
+    .employee-stats .stat-item:nth-child(2) {
+        display: none;
+    }
+    
+    .week-pattern-strip {
+        gap: 2px;
+        padding-top: 6px;
+    }
+    
+    .week-pattern-dot {
+        padding: 3px 1px;
+        font-size: 0.5rem;
+        border-radius: 4px;
+    }
+    
+    .employee-card-actions {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+        padding-top: 8px;
+    }
+    
+    .card-action-btn {
+        min-height: 34px;
+        padding: 0;
     }
     
     .card-action-btn span {
-        font-size: 0.62rem;
+        display: none;
+    }
+    
+    .card-action-btn i {
+        font-size: 0.85rem;
     }
     
     .weekly-schedule-container {
@@ -2033,21 +2101,21 @@ body {
     }
     
     .employee-avatar {
-        width: 44px;
-        height: 44px;
-        font-size: 1rem;
-    }
-    
-    .employee-name {
+        width: 40px;
+        height: 40px;
         font-size: 0.9rem;
     }
     
+    .employee-name {
+        font-size: 0.78rem;
+    }
+    
     .employee-stats {
-        gap: 8px;
+        gap: 6px;
     }
     
     .stat-item {
-        font-size: 0.65rem;
+        font-size: 0.6rem;
     }
     
     .week-header, .week-row, .week-position-header {
