@@ -45,6 +45,22 @@ function positionCssClass(positionKey) {
     return getPositionInfo(positionKey).cls;
 }
 
+// Xác định đúng vị trí (职种) của 1 ca làm cụ thể. Trước đây các chỗ đếm/lọc
+// theo vị trí hoặc dùng thẳng schedule.employeePosition (nếu rỗng/không khớp
+// vị trí nào thì bị BỎ SÓT hoàn toàn khỏi mọi nhóm), hoặc dùng getPositionInfo()
+// với fallback mặc định luôn là 前台 (POSITIONS[0]) - khiến những ca thiếu
+// employeePosition (dữ liệu cũ, hoặc do lỗi ghi) bị gộp nhầm vào 前台 thay vì
+// đúng vị trí thật của nhân viên đó, làm 拉客/厨房 bị đếm thiếu hoặc thành 0.
+// Hàm này ưu tiên employeePosition đã lưu trên ca (nếu hợp lệ), sau đó mới
+// fallback về vị trí HIỆN TẠI của chính nhân viên đó, và cuối cùng mới về 前台.
+function resolveSchedulePosition(schedule) {
+    if (schedule && POSITIONS.some(p => p.key === schedule.employeePosition)) {
+        return schedule.employeePosition;
+    }
+    const emp = schedule ? employees.find(e => e.id === schedule.employeeId) : null;
+    return emp ? emp.position : POSITIONS[0].key;
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', function() {
     console.log("🚀 鍛治町酒場 神田店 勤務表システム起動");
@@ -906,6 +922,26 @@ function hasScheduleEnded(schedule) {
     return nowMinutes >= endMinutes;
 }
 
+// Ca làm có "dính" tới khung giờ 晚班 (từ 17h trở đi) hay không - dùng RIÊNG cho phần
+// ĐẾM TỔNG số người theo vị trí. Khác với getShiftPeriod() (chỉ xét giờ BẮT ĐẦU, dùng để
+// tô màu/icon 早班-晚班 trên lịch), chỗ đếm tổng phải xét CẢ KHOẢNG THỜI GIAN làm việc:
+// - Ca bắt đầu SỚM (trước 17h) nhưng làm xuyên qua tới sau 17h (VD 10:00 - 23:00) vẫn
+//   phải được tính, vì từ 17h trở đi người đó vẫn đang làm.
+// - Ca kết thúc qua nửa đêm (VD 17:00 - 02:00, hay 10:00 - 03:00 hôm sau) vẫn tính bình
+//   thường dù giờ kết thúc "nhỏ hơn" giờ bắt đầu về mặt số.
+// - CHỈ loại những ca kết thúc TRƯỚC 17h (nằm gọn hoàn toàn trong 早班, không dính chút
+//   nào tới 晚班), VD 08:00 - 16:00.
+function shiftReachesLatePeriod(schedule) {
+    if (!schedule || schedule.isDayOff) return false;
+    const LATE_THRESHOLD = 17 * 60; // 17:00
+    const startMinutes = timeToMinutes(schedule.startTime);
+    let endMinutes = timeToMinutes(schedule.endTime);
+    if (startMinutes === null) return false;
+    if (endMinutes === null) return startMinutes >= LATE_THRESHOLD; // thiếu giờ kết thúc: tạm xét theo giờ bắt đầu
+    if (endMinutes <= startMinutes) endMinutes += 24 * 60; // ca qua đêm (kể cả qua sau nửa đêm)
+    return endMinutes > LATE_THRESHOLD;
+}
+
 function getDayHeadcount(dateString) {
     const result = {};
     POSITIONS.forEach(pos => { result[pos.key] = 0; });
@@ -915,20 +951,22 @@ function getDayHeadcount(dateString) {
     
     Object.values(schedules).forEach(s => {
         if (!s || s.date !== dateString || s.isDayOff) return;
-        // Chỉ tính vào tổng theo vị trí những ca 晚班 (bắt đầu từ 17h trở đi).
-        // Ca 早班 (trước 17h, từ sáng tới 17h) KHÔNG được tính vào tổng số người/vị trí này,
-        // dù vẫn hiển thị bình thường trên lịch tuần (chỉ đổi màu để dễ phân biệt).
-        if (getShiftPeriod(s.startTime) !== 'late') return;
+        // Chỉ tính vào tổng theo vị trí những ca có làm việc trong khung 晚班 (từ 17h trở
+        // đi) - kể cả ca bắt đầu sớm hơn 17h nhưng làm xuyên qua (VD 10:00-23:00 vẫn tính,
+        // vì từ 17h trở đi vẫn đang làm). Ca 早班 hoàn toàn trước 17h (VD 08:00-16:00) thì
+        // KHÔNG tính vào tổng này, dù vẫn hiển thị bình thường trên lịch tuần.
+        if (!shiftReachesLatePeriod(s)) return;
         // Với NGÀY HÔM NAY: chỉ tính những người ĐANG trong ca làm tại thời điểm hiện tại
         // (ai đã tan làm rồi thì không tính vào tổng nữa). Ngày khác (quá khứ/tương lai)
         // vẫn giữ nguyên logic đếm cả ngày như cũ.
         // if (isToday && !isScheduleCurrentlyActive(s)) return;
-        const key = getPositionInfo(s.employeePosition).key;
+        const key = resolveSchedulePosition(s);
         result[key] = (result[key] || 0) + 1;
     });
     
     return result;
 }
+
 
 function getWeekPattern(employeeId, weekOffset = 0) {
     const { startDate } = getWeekDates(weekOffset);
@@ -1354,7 +1392,7 @@ function buildCopiedScheduleData(schedule, targetDate) {
     const data = {
         employeeId: schedule.employeeId,
         employeeName: schedule.employeeName,
-        employeePosition: schedule.employeePosition,
+        employeePosition: resolveSchedulePosition(schedule),
         date: targetDate,
         isDayOff: !!schedule.isDayOff,
         startTime: schedule.startTime || '00:00',
@@ -3802,7 +3840,7 @@ function showTodaySchedule() {
         let html = '';
         
         POSITIONS.forEach(pos => {
-            const groupSchedules = todaySchedules.filter(s => s.employeePosition === pos.key);
+            const groupSchedules = todaySchedules.filter(s => resolveSchedulePosition(s) === pos.key);
             if (groupSchedules.length === 0) return;
             const title = positionLabel(pos.key);
             html += `<h4 style="margin-bottom: 16px; margin-top: 16px; color: var(--${pos.color}); font-weight: 700;"><i class="fas ${pos.icon}"></i> ${title}</h4>`;
@@ -3816,7 +3854,7 @@ function showTodaySchedule() {
 }
 
 function createTodayItem(schedule) {
-    const position = positionLabel(schedule.employeePosition);
+    const position = positionLabel(resolveSchedulePosition(schedule));
     const finished = !schedule.isDayOff && hasScheduleEnded(schedule);
     
     return `
