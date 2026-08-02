@@ -806,7 +806,18 @@ function loadEmployees() {
                     id: key,
                     name: data[key].name,
                     position: data[key].position || '前台/服务区',
-                    createdAt: data[key].createdAt
+                    createdAt: data[key].createdAt,
+                    // Các trường tài khoản đăng nhập (uid/loginEmail/loginUsername/...) TRƯỚC ĐÂY
+                    // bị bỏ sót ở đây - khiến mọi chỗ tra cứu employee từ mảng employees[] toàn
+                    // cục (VD nút "忘记密码(重新发放)") luôn thấy employee.loginUsername là
+                    // undefined dù Firebase có dữ liệu thật, nên các hàm đó cứ return ngay từ đầu
+                    // mà không có bất kỳ phản hồi nào cho admin thấy - y hệt hiện tượng "bấm nút
+                    // không có phản hồi". Bổ sung đủ trường vào đây để mọi nơi dùng employees[]
+                    // đều thấy đúng trạng thái tài khoản đăng nhập.
+                    uid: data[key].uid,
+                    loginEmail: data[key].loginEmail,
+                    loginUsername: data[key].loginUsername,
+                    loginEmailVersion: data[key].loginEmailVersion
                 });
             });
         }
