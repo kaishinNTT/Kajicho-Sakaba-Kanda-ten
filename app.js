@@ -2842,9 +2842,19 @@ function buildWeeklyRowHtml(employee, days, schedulesByEmployee) {
                 
                 const dayPositionForTitle = schedule && !schedule.isDayOff ? (schedule.employeePosition || employee.position) : null;
                 const titleShiftPeriod = schedule && !schedule.isDayOff ? getShiftPeriod(schedule.startTime) : null;
-                const headcountNote = titleShiftPeriod === 'early'
-                    ? (currentLanguage === 'ja' ? ' (早番・人数集計対象外)' : ' (早班・不计入人数统计)')
-                    : (titleShiftPeriod === 'late' ? (currentLanguage === 'ja' ? ' (晩番)' : ' (晚班)') : '');
+                // Ghi chú "có tính vào tổng số người hay không" phải dùng ĐÚNG cùng 1 hàm với
+                // chỗ đếm thật (shiftReachesLatePeriod) - không dùng lại getShiftPeriod (chỉ xét
+                // giờ bắt đầu) như trước, nếu không ca kiểu 10:00-23:00 sẽ bị báo nhầm là "không
+                // tính" trong khi thực ra khúc sau 17h của nó đã được cộng vào tổng rồi.
+                const countsInHeadcount = schedule && !schedule.isDayOff ? shiftReachesLatePeriod(schedule) : null;
+                let headcountNote = '';
+                if (titleShiftPeriod === 'early') {
+                    headcountNote = countsInHeadcount
+                        ? (currentLanguage === 'ja' ? ' (早番スタート・17時以降は人数集計対象)' : ' (早班开始・17点后计入人数统计)')
+                        : (currentLanguage === 'ja' ? ' (早番・人数集計対象外)' : ' (早班・不计入人数统计)');
+                } else if (titleShiftPeriod === 'late') {
+                    headcountNote = currentLanguage === 'ja' ? ' (晩番)' : ' (晚班)';
+                }
                 const title = schedule ? (schedule.isDayOff ? 
                     (currentLanguage === 'ja' ? '休み' : '休息') : 
                     `${schedule.startTime || ''}-${schedule.endTime || ''}${dayPositionForTitle && dayPositionForTitle !== employee.position ? ' · ' + positionLabel(dayPositionForTitle) : ''}${headcountNote}`) : 
