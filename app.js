@@ -1692,7 +1692,7 @@ function renderAccountExistsView(employeeId, employee, justIssuedPassword) {
     ` : '';
 
     const reissueSectionHtml = employee.loginUsername ? `
-        <button type="button" class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="reissueStaffPassword('${employeeId}')">
+        <button type="button" class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="confirmReissueStaffPassword('${employeeId}')">
             <i class="fas fa-key"></i>
             <span data-lang="ja">パスワードを忘れた場合(新規発行)</span><span data-lang="zh" style="display:none">忘记密码(重新发放)</span>
         </button>
@@ -1917,17 +1917,58 @@ function createEmployeeAccount(employeeId, attemptCount) {
     });
 }
 
-function reissueStaffPassword(employeeId) {
+// Bước 1: hiện panel xác nhận NGAY TRONG modal (không dùng confirm() mặc định của trình
+// duyệt). Trước đây dùng confirm() - hộp thoại này ở 1 số webview trong app (Zalo,
+// Messenger, Facebook...) có thể bị chặn/im lặng bỏ qua hoàn toàn, khiến admin bấm nút
+// nhưng "chẳng thấy gì xảy ra". Panel tự vẽ trong modal thì chắc chắn luôn hiển thị được,
+// bất kể mở bằng trình duyệt nào.
+function confirmReissueStaffPassword(employeeId) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee || !employee.loginUsername) return;
 
-    const confirmMsg = currentLanguage === 'ja'
-        ? `${employee.name} の新しいパスワードを発行しますか?(古いパスワードは無効になります。ログインIDは変わりません)`
-        : `确定要为 ${employee.name} 发放新密码吗?(旧密码将失效，登录账号不变)`;
-    if (!confirm(confirmMsg)) return;
+    const body = document.getElementById('accountModalBody');
+    if (!body) return;
+
+    const msg = currentLanguage === 'ja'
+        ? `<strong>${employee.name}</strong> の新しいパスワードを発行しますか？<br>古いパスワードは無効になり、ログインIDはそのまま変わりません。`
+        : `确定要为 <strong>${employee.name}</strong> 发放新密码吗？<br>旧密码将立即失效，登录账号保持不变。`;
+
+    body.innerHTML = `
+        <div style="text-align:center; padding: 8px 0 20px;">
+            <i class="fas fa-key" style="font-size:30px; color: var(--primary); margin-bottom:12px;"></i>
+            <p style="font-size:14px; color: var(--dark); line-height:1.7; margin:0;">${msg}</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button type="button" class="btn-secondary" style="flex:1; margin:0;" onclick="showEmployeeAccountModal('${employeeId}')">
+                <span data-lang="ja">キャンセル</span><span data-lang="zh" style="display:none">取消</span>
+            </button>
+            <button type="button" class="btn-primary" id="confirmReissueBtn" style="flex:1; margin:0;" onclick="doReissueStaffPassword('${employeeId}')">
+                <i class="fas fa-key"></i>
+                <span data-lang="ja">発行する</span><span data-lang="zh" style="display:none">确认发放</span>
+            </button>
+        </div>
+    `;
+    applyLanguageToElement(body);
+}
+
+// Bước 2: xử lý thật sau khi admin đã bấm xác nhận trong panel trên. Có trạng thái loading
+// rõ ràng trên nút (khoá nút + xoay icon) trong lúc chờ Firebase, để admin luôn thấy nút
+// đang "làm việc" thay vì tưởng bấm không ăn - và LUÔN báo kết quả (thành công hoặc lỗi cụ
+// thể) dù có chuyện gì xảy ra.
+function doReissueStaffPassword(employeeId) {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee || !employee.loginUsername) return;
+
+    const btn = document.getElementById('confirmReissueBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${currentLanguage === 'ja' ? '発行中…' : '发放中…'}`;
+    }
 
     if (!window.secondaryApp || !window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
+        confirmReissueStaffPassword(employeeId);
         return;
     }
 
@@ -1963,6 +2004,7 @@ function reissueStaffPassword(employeeId) {
     })
     .catch(error => {
         showMessage((currentLanguage === 'ja' ? '発行失敗: ' : '发放失败: ') + describeAccountError(error), 'error');
+        confirmReissueStaffPassword(employeeId);
     });
 }
 
