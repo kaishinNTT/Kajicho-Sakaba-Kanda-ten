@@ -1,3 +1,17 @@
+// ==================== DATE HELPER ====================
+// QUAN TRỌNG: không dùng date.toISOString().split('T')[0] để lấy chuỗi ngày YYYY-MM-DD,
+// vì toISOString() quy đổi sang giờ UTC. Ở múi giờ Nhật (JST = UTC+9), bất kỳ thời điểm
+// nào trong khoảng 00:00-08:59 giờ địa phương sẽ bị quy đổi lùi về NGÀY HÔM TRƯỚC theo UTC
+// => lịch tuần/ngày bị lệch 1 ngày (thứ hiển thị đúng nhưng ngày thì sai) mỗi khi ai đó
+// mở app vào khung giờ đó (rất hay gặp với quán làm khuya). Dùng hàm này để lấy đúng
+// ngày theo giờ ĐỊA PHƯƠNG của trình duyệt thay vì giờ UTC.
+function formatLocalDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
 // ==================== GLOBAL VARIABLES ====================
 let employees = [];
 let schedules = {};
@@ -158,7 +172,7 @@ function startApp() {
 
 function initApp() {
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = formatLocalDate(today);
     
     // Set form date
     const scheduleDateInput = document.getElementById('scheduleDate');
@@ -897,7 +911,7 @@ function renderEmployeeCards() {
 // Đếm số người đang làm việc (không tính nghỉ) ở Front-desk và Bếp trong 1 ngày cụ thể
 // ==================== TRẠNG THÁI "ĐANG LÀM / ĐÃ TAN LÀM" (chỉ áp dụng cho hôm nay, theo giờ thực) ====================
 function todayDateString() {
-    return new Date().toISOString().split('T')[0];
+    return formatLocalDate(new Date());
 }
 
 function timeToMinutes(timeStr) {
@@ -2444,7 +2458,7 @@ function addSchedule() {
 }
 
 function resetScheduleForm() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     const dateInput = document.getElementById('scheduleDate');
     const startInput = document.getElementById('scheduleStart');
     const endInput = document.getElementById('scheduleEnd');
@@ -2500,7 +2514,7 @@ function initWeekdaysSelector() {
         
         html += `
             <button type="button" class="weekday-btn ${day.default ? 'active' : ''}" 
-                    data-day="${day.id}" data-date="${date.toISOString().split('T')[0]}"
+                    data-day="${day.id}" data-date="${formatLocalDate(date)}"
                     onclick="toggleWeekday(this)">
                 <div style="font-weight: 600; font-size: 14px; color: var(--gray-700);">${day.label}</div>
                 <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">${month}/${dayNum}</div>
@@ -2579,7 +2593,7 @@ function updateWeekdaysSelector() {
         const month = date.getMonth() + 1;
         const dayNum = date.getDate();
         
-        const dateString = date.toISOString().split('T')[0];
+        const dateString = formatLocalDate(date);
         const hasSchedule = checkExistingSchedule(dateString);
         
         html += `
@@ -2759,7 +2773,7 @@ function updateRestDaysSelector() {
         
         html += `
             <button type="button" class="weekday-btn" 
-                    data-day="${day.id}" data-date="${date.toISOString().split('T')[0]}"
+                    data-day="${day.id}" data-date="${formatLocalDate(date)}"
                     onclick="toggleRestDay(this)">
                 <div style="font-weight: 600; font-size: 14px; color: var(--gray-700);">${dayNames[index]}</div>
                 <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">${month}/${dayNum}</div>
@@ -2949,7 +2963,7 @@ function renderWeeklySchedule() {
         ? ['月', '火', '水', '木', '金', '土', '日']
         : ['一', '二', '三', '四', '五', '六', '日'];
     
-    const todayString = new Date().toISOString().split('T')[0];
+    const todayString = formatLocalDate(new Date());
     
     let html = `
         <div class="week-header">
@@ -3283,8 +3297,8 @@ function getWeekDates(weekOffset = 0) {
     return {
         startDate: monday,
         endDate: sunday,
-        startString: monday.toISOString().split('T')[0],
-        endString: sunday.toISOString().split('T')[0]
+        startString: formatLocalDate(monday),
+        endString: formatLocalDate(sunday)
     };
 }
 
@@ -3299,7 +3313,7 @@ function generateWeekDays(startDate) {
         days.push({
             name: dayNames[i],
             date: `${date.getMonth() + 1}/${date.getDate()}`,
-            dateString: date.toISOString().split('T')[0],
+            dateString: formatLocalDate(date),
             dayIndex: i
         });
     }
@@ -3309,8 +3323,8 @@ function generateWeekDays(startDate) {
 
 function getWeekSchedules(startDate, endDate) {
     const weekSchedules = [];
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
+    const startStr = formatLocalDate(startDate);
+    const endStr = formatLocalDate(endDate);
     
     if (!schedules || typeof schedules !== 'object') return weekSchedules;
     
@@ -3325,8 +3339,8 @@ function getWeekSchedules(startDate, endDate) {
 
 function getEmployeeSchedulesForWeek(employeeId, startDate, endDate) {
     const employeeSchedules = [];
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
+    const startStr = formatLocalDate(startDate);
+    const endStr = formatLocalDate(endDate);
     
     if (!schedules || typeof schedules !== 'object') return employeeSchedules;
     
@@ -3360,8 +3374,8 @@ function calculateMonthlyHours(employeeId) {
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     
-    const firstStr = firstDay.toISOString().split('T')[0];
-    const lastStr = lastDay.toISOString().split('T')[0];
+    const firstStr = formatLocalDate(firstDay);
+    const lastStr = formatLocalDate(lastDay);
     
     let totalHours = 0;
     
@@ -3885,7 +3899,7 @@ function setupEventListeners() {
 
 // ==================== QUICK ACTIONS ====================
 function showTodaySchedule() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     const todaySchedules = Object.values(schedules).filter(s => s && s.date === today);
     
     const container = document.getElementById('todayList');
@@ -3957,7 +3971,7 @@ function showStats() {
     
     const totalEmployees = employees.length;
     const totalSchedules = Object.keys(schedules).length;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = formatLocalDate(new Date());
     const todayShifts = Object.values(schedules).filter(s => s && s.date === todayStr && !s.isDayOff).length;
     const monthHours = roundHours(employees.reduce((sum, emp) => sum + calculateMonthlyHours(emp.id), 0), 1);
     const avgWeekHours = roundHours(totalWeekHours / (employees.length || 1), 1);
