@@ -1746,6 +1746,19 @@ function copyExistingAccountCredentials(employeeId, password) {
     }
 }
 
+// Copy riêng ID đăng nhập (dùng ở nút "コピー" cạnh ID trong màn "đã có tài khoản") - tiện khi
+// admin chỉ cần gửi lại ID cho nhân viên mà không cần cấp lại mật khẩu.
+function copyStaffLoginId(displayId) {
+    const done = () => showMessage(currentLanguage === 'ja' ? 'コピーしました' : '已复制', 'success');
+    const fail = () => showMessage(currentLanguage === 'ja' ? 'コピー失敗' : '复制失败', 'error');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(displayId).then(done).catch(fail);
+    } else {
+        fail();
+    }
+}
+
 function showEmployeeAccountModal(employeeId) {
     const cachedEmployee = employees.find(e => e.id === employeeId);
     if (!cachedEmployee) return;
@@ -1790,7 +1803,7 @@ function renderAccountExistsView(employeeId, employee, justIssuedPassword) {
     const justIssuedHtml = justIssuedPassword ? `
         <div style="background: var(--info-light); border: 1px solid rgba(37,99,235,0.3); border-radius: var(--border-radius); padding: 14px; margin-bottom: 16px;">
             <div style="font-size:12px; color: var(--gray-600); margin-bottom:6px;">
-                <span data-lang="ja">新しいパスワード(今すぐコピーしてください)</span><span data-lang="zh" style="display:none">新密码(请立即复制)</span>
+                <span data-lang="ja">新しいパスワード。今コピーしてください</span><span data-lang="zh" style="display:none">新密码，请现在复制</span>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <input type="text" class="input-field" value="${justIssuedPassword}" readonly style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
@@ -1802,45 +1815,52 @@ function renderAccountExistsView(employeeId, employee, justIssuedPassword) {
     ` : '';
 
     const reissueSectionHtml = employee.loginUsername ? `
-        <button type="button" class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="confirmReissueStaffPassword('${employeeId}')">
+        <button type="button" class="btn-primary" style="width:100%; margin-bottom:8px;" onclick="confirmReissueStaffPassword('${employeeId}')">
             <i class="fas fa-key"></i>
-            <span data-lang="ja">パスワードを忘れた場合(新規発行)</span><span data-lang="zh" style="display:none">忘记密码(重新发放)</span>
+            <span data-lang="ja">新しいパスワードを発行</span><span data-lang="zh" style="display:none">发放新密码</span>
         </button>
-        <p style="font-size:11px; color: var(--gray-400); margin-bottom:12px;">
-            <span data-lang="ja">※ ログインIDはそのまま変わらず、新しいパスワードだけ発行されます。発行後は必ずコピーしてスタッフに渡してください。</span>
-            <span data-lang="zh" style="display:none">※ 登录账号保持不变，仅生成新密码。发放后请务必复制并交给员工。</span>
+        <p style="font-size:11.5px; color: var(--gray-400); margin-bottom:16px;">
+            <span data-lang="ja">パスワードを忘れた時に使います。IDは変わらず、パスワードだけ新しくなります。</span>
+            <span data-lang="zh" style="display:none">忘记密码时使用。账号不变，只更新密码。</span>
         </p>
     ` : `
         <p style="font-size:12px; color: var(--gray-500); margin-bottom:16px;">
-            <span data-lang="ja">※ この古いアカウントは以前の方式(メール直接入力)で作られています。パスワードを再発行するには一度「完全に削除」してから作り直してください。</span>
-            <span data-lang="zh" style="display:none">※ 该账号是用旧的方式(直接输入邮箱)创建的。如需重设密码，请先「彻底删除」后重新创建。</span>
+            <span data-lang="ja">※ このアカウントは古い方式で作られています。パスワードを変えるには、下の「アカウントを削除」を押してから作り直してください。</span>
+            <span data-lang="zh" style="display:none">※ 该账号是用旧方式创建的。如需更改密码，请先点击下方「删除账号」后重新创建。</span>
         </p>
     `;
 
     body.innerHTML = `
-        <div style="text-align:center; margin-bottom: 20px;">
-            <div class="employee-avatar-small" style="width:56px;height:56px;font-size:22px;margin:0 auto 10px;">${employee.name.charAt(0)}</div>
+        <div style="text-align:center; margin-bottom: 18px;">
+            <div class="employee-avatar-small" style="width:52px;height:52px;font-size:20px;margin:0 auto 8px;">${employee.name.charAt(0)}</div>
             <div style="font-weight:700; color: var(--dark);">${employee.name}</div>
         </div>
-        <div style="background: var(--success-light); border: 1px solid rgba(16,185,129,0.3); border-radius: var(--border-radius); padding: 16px; margin-bottom: 16px;">
-            <div style="display:flex; align-items:center; gap:8px; color: var(--success); font-weight:700; margin-bottom: 6px;">
+        <div style="background: var(--success-light); border: 1px solid rgba(16,185,129,0.3); border-radius: var(--border-radius); padding: 14px 16px; margin-bottom: 18px;">
+            <div style="display:flex; align-items:center; gap:8px; color: var(--success); font-weight:700; margin-bottom: 8px; font-size:13.5px;">
                 <i class="fas fa-circle-check"></i>
-                <span data-lang="ja">アカウント設定済み</span><span data-lang="zh" style="display:none">已设置账号</span>
+                <span data-lang="ja">ログインできます</span><span data-lang="zh" style="display:none">可以登录</span>
             </div>
-            <div style="font-size: 13px; color: var(--gray-600);">
-                <span data-lang="ja">ログインID</span><span data-lang="zh" style="display:none">登录账号</span>: <strong>${displayId}</strong>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="font-size: 13px; color: var(--gray-600);">
+                    <span data-lang="ja">ID</span><span data-lang="zh" style="display:none">账号</span>:
+                    <strong style="font-size:15px; letter-spacing:0.5px;">${displayId}</strong>
+                </div>
+                <button type="button" class="btn-secondary" style="flex-shrink:0; padding:6px 10px; font-size:12px;" onclick="copyStaffLoginId('${displayId}')">
+                    <i class="fas fa-copy"></i>
+                    <span data-lang="ja">コピー</span><span data-lang="zh" style="display:none">复制</span>
+                </button>
             </div>
         </div>
         ${justIssuedHtml}
         ${reissueSectionHtml}
-        <button type="button" class="btn-secondary" style="width:100%;" onclick="unlinkEmployeeAccount('${employeeId}')">
-            <i class="fas fa-link-slash"></i>
-            <span data-lang="ja">アカウントを完全に削除</span><span data-lang="zh" style="display:none">彻底删除账号关联</span>
+        <button type="button" class="btn-secondary" style="width:100%; color: var(--danger, #dc2626);" onclick="unlinkEmployeeAccount('${employeeId}')">
+            <i class="fas fa-user-slash"></i>
+            <span data-lang="ja">アカウントを削除(退職時など)</span><span data-lang="zh" style="display:none">删除账号(离职时使用)</span>
         </button>
         <div style="text-align:center; margin-top:14px; padding-top:12px; border-top: 1px dashed var(--border);">
             <button type="button" onclick="resetEmployeeAccountData('${employeeId}')" style="background:none; border:none; color: var(--gray-400); font-size:11.5px; font-weight:600; cursor:pointer; text-decoration:underline;">
                 <i class="fas fa-wrench"></i>
-                <span data-lang="ja">ログインできない・エラーが出続ける場合はこちら(リセット)</span><span data-lang="zh" style="display:none">如果无法登录或持续报错，点此重置</span>
+                <span data-lang="ja">うまくログインできない場合はこちら</span><span data-lang="zh" style="display:none">如果一直无法登录，点此</span>
             </button>
         </div>
     `;
