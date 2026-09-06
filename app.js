@@ -30,7 +30,8 @@ let dragEmployeeId = null; // nhân viên đang được kéo (drag & drop đổ
 // ở phía sau khi tạo/đăng nhập tài khoản - nhân viên không cần biết tới domain giả này.
 const STAFF_ACCOUNT_PREFIX = 'KAJICHO';
 const STAFF_LOGIN_DOMAIN = '@kajicho-staff.local';
-let pendingStaffAccount = null; // { username, password } - bộ ID/mật khẩu vừa sinh, chưa bấm "tạo" thì chưa lưu vào DB
+let pendingStaffAccount = null; // { username, password, passwordMode } - bộ ID/mật khẩu vừa sinh, chưa bấm "tạo" thì chưa lưu vào DB
+let pendingReissue = null; // { employeeId, password, passwordMode } - mật khẩu mới đang chuẩn bị phát hành lại cho 1 nhân viên đã có tài khoản
 
 // ==================== POSITIONS CONFIG ====================
 // Danh sách vị trí (职种) dùng chung cho toàn bộ app. Thêm vị trí mới chỉ cần
@@ -1594,37 +1595,120 @@ function secureRandomIndex(max) {
     return arr[0] % max;
 }
 
-function generateSecureStaffPassword(length = 10) {
-    // Bỏ các ký tự dễ nhầm lẫn khi đọc/gõ lại (I, O, 0, 1, l...)
-    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lower = 'abcdefghijkmnpqrstuvwxyz';
-    const digits = '23456789';
-    const symbols = '!@#$%*?';
-    const all = upper + lower + digits + symbols;
+// Danh sách từ đơn giản, dễ đọc, dễ gõ (chỉ chữ thường a-z, không dấu, không ký tự dễ
+// nhầm lẫn) - dùng để ghép thành mật khẩu "dễ nhớ" thay cho kiểu random hoa/thường/ký tự
+// đặc biệt trước đây (VD: ABd#"3bus@) rất khó đọc lại và khó gõ trên điện thoại.
+const STAFF_PASSWORD_WORDS = [
+    'sakura', 'momiji', 'tanuki', 'matsuri', 'ichigo', 'mikan', 'ringo', 'budou',
+    'kaze', 'hoshi', 'tsuki', 'sora', 'umi', 'yama', 'kawa', 'niji',
+    'neko', 'inu', 'kuma', 'tora', 'panda', 'usagi', 'kirin', 'zou',
+    'tokyo', 'osaka', 'sushi', 'ramen', 'udon', 'soba', 'mochi', 'wasabi',
+    'ninja', 'samurai', 'kimono', 'daruma', 'momo', 'hana', 'taiyo', 'fuji'
+];
 
-    // Đảm bảo có đủ chữ hoa/thường/số/ký tự đặc biệt để mật khẩu đủ mạnh
-    let chars = [
-        upper[secureRandomIndex(upper.length)],
-        lower[secureRandomIndex(lower.length)],
-        digits[secureRandomIndex(digits.length)],
-        symbols[secureRandomIndex(symbols.length)]
-    ];
-    for (let i = chars.length; i < length; i++) {
-        chars.push(all[secureRandomIndex(all.length)]);
-    }
-    // Xáo trộn vị trí để 4 ký tự đầu không luôn cố định theo thứ tự hoa/thường/số/ký tự
-    for (let i = chars.length - 1; i > 0; i--) {
-        const j = secureRandomIndex(i + 1);
-        [chars[i], chars[j]] = [chars[j], chars[i]];
-    }
-    return chars.join('');
+// Sinh mật khẩu kiểu "từ + số" (VD: sakura47) - chỉ chữ thường + số, không ký tự đặc biệt,
+// không phân biệt hoa/thường -> dễ đọc, dễ nhớ, dễ gõ lại (kể cả trên điện thoại) nhưng
+// vẫn đủ ngẫu nhiên để không dễ đoán, vì chỉ dùng nội bộ nhân viên nên không cần phức tạp
+// như mật khẩu công khai trên Internet.
+function generateSimpleStaffPassword() {
+    const word = STAFF_PASSWORD_WORDS[secureRandomIndex(STAFF_PASSWORD_WORDS.length)];
+    const number = 10 + secureRandomIndex(90); // 10 - 99
+    return `${word}${number}`;
 }
 
-function regenerateStaffAccountFields() {
-    if (!pendingStaffAccount) return;
-    pendingStaffAccount.password = generateSecureStaffPassword();
-    const passField = document.getElementById('newAccountPasswordDisplay');
-    if (passField) passField.value = pendingStaffAccount.password;
+// Kiểm tra hợp lệ tối thiểu khi admin tự nhập mật khẩu (chế độ "tự đặt"): Firebase Auth
+// yêu cầu tối thiểu 6 ký tự, không có yêu cầu nào khác.
+function isValidStaffPassword(password) {
+    return !!password && password.trim().length >= 6;
+}
+
+// ==================== Chọn kiểu mật khẩu: "自動" (tự động, đơn giản) / "自分で決める" (tự đặt) ====================
+// Dùng chung cho cả 2 màn hình: tạo tài khoản mới VÀ phát hành lại mật khẩu (quên mật khẩu).
+// kind = 'new' -> thao tác trên pendingStaffAccount ; kind = 'reissue' -> thao tác trên pendingReissue
+
+function getPasswordState(kind) {
+    return kind === 'reissue' ? pendingReissue : pendingStaffAccount;
+}
+
+function renderPasswordSectionHtml(kind, employeeId, state) {
+    if (!state) return '';
+    const isCustom = state.passwordMode === 'custom';
+    const inputId = kind === 'reissue' ? 'reissuePasswordDisplay' : 'newAccountPasswordDisplay';
+
+    return `
+        <div class="form-group">
+            <label data-lang="ja">パスワード</label><label data-lang="zh" style="display:none">密码</label>
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <button type="button" onclick="handlePasswordModeChange('${kind}','${employeeId}','auto')"
+                    class="${!isCustom ? 'btn-primary' : 'btn-secondary'}" style="flex:1; margin:0; padding:8px 6px; font-size:12px;">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span data-lang="ja">自動でかんたんに</span><span data-lang="zh" style="display:none">自动生成(简单)</span>
+                </button>
+                <button type="button" onclick="handlePasswordModeChange('${kind}','${employeeId}','custom')"
+                    class="${isCustom ? 'btn-primary' : 'btn-secondary'}" style="flex:1; margin:0; padding:8px 6px; font-size:12px;">
+                    <i class="fas fa-pen"></i>
+                    <span data-lang="ja">自分で決める</span><span data-lang="zh" style="display:none">自己设置</span>
+                </button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="${inputId}" class="input-field" value="${(state.password || '').replace(/"/g, '&quot;')}"
+                    ${isCustom ? '' : 'readonly'}
+                    oninput="handlePasswordInput('${kind}','${employeeId}', this.value)"
+                    placeholder="${isCustom ? (currentLanguage === 'ja' ? '6文字以上で自由に' : '请输入6位以上') : ''}"
+                    style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
+                <button type="button" class="btn-secondary" style="flex-shrink:0; padding:0 14px;" onclick="handlePasswordRegenerate('${kind}','${employeeId}')"
+                    title="${currentLanguage === 'ja' ? (isCustom ? '候補を出す' : 'パスワードを再生成') : (isCustom ? '获取建议' : '重新生成密码')}">
+                    <i class="fas ${isCustom ? 'fa-lightbulb' : 'fa-rotate'}"></i>
+                </button>
+            </div>
+            <p style="font-size:11px; color: var(--gray-400); margin-top:6px;">
+                ${isCustom
+                    ? `<span data-lang="ja">※ 6文字以上ならスタッフが覚えやすいものを自由に決めてOKです。右の電球ボタンで候補を出すこともできます。</span><span data-lang="zh" style="display:none">※ 只要6位以上，可自由设置员工容易记住的密码。也可点击右侧灯泡按钮获取建议。</span>`
+                    : `<span data-lang="ja">※「読みやすい単語+数字」の組み合わせで自動生成されるので、そのままスタッフに伝えやすいです。右のボタンで別の候補に変更できます。</span><span data-lang="zh" style="display:none">※ 自动生成"单词+数字"组合，方便直接告诉员工。可点击右侧按钮更换候选。</span>`
+                }
+            </p>
+        </div>
+    `;
+}
+
+function refreshPasswordSection(kind, employeeId) {
+    const state = getPasswordState(kind);
+    const sectionId = kind === 'reissue' ? 'reissuePasswordSection' : 'newAccountPasswordSection';
+    const el = document.getElementById(sectionId);
+    if (el) el.innerHTML = renderPasswordSectionHtml(kind, employeeId, state);
+    applyLanguageToElement(el);
+}
+
+function handlePasswordModeChange(kind, employeeId, mode) {
+    const state = getPasswordState(kind);
+    if (!state || state.passwordMode === mode) return;
+    state.passwordMode = mode;
+    if (mode === 'auto') {
+        // Chuyển sang tự động -> luôn sinh 1 mật khẩu "từ + số" mới, bỏ nội dung admin gõ tay trước đó
+        state.password = generateSimpleStaffPassword();
+    } else if (!state.password) {
+        // Chuyển sang tự đặt nhưng đang trống -> gợi ý sẵn 1 mật khẩu dễ nhớ để admin chỉnh sửa tiếp,
+        // thay vì bắt gõ từ đầu
+        state.password = generateSimpleStaffPassword();
+    }
+    refreshPasswordSection(kind, employeeId);
+}
+
+function handlePasswordRegenerate(kind, employeeId) {
+    const state = getPasswordState(kind);
+    if (!state) return;
+    // Dù đang ở chế độ nào (tự động hay tự đặt), bấm nút này đều đưa ra 1 gợi ý mới - ở chế
+    // độ tự đặt, admin vẫn có thể sửa tiếp sau khi có gợi ý.
+    state.password = generateSimpleStaffPassword();
+    refreshPasswordSection(kind, employeeId);
+}
+
+function handlePasswordInput(kind, employeeId, value) {
+    const state = getPasswordState(kind);
+    if (!state) return;
+    // Chỉ cập nhật giá trị đang gõ, KHÔNG render lại toàn bộ section ở đây để tránh mất
+    // vị trí con trỏ / focus của admin đang gõ dở.
+    state.password = value;
 }
 
 function copyStaffAccountCredentials(employeeId) {
@@ -1687,7 +1771,8 @@ function showEmployeeAccountModal(employeeId) {
             pendingStaffAccount = {
                 mode: 'new',
                 username: generateNextStaffUsernameFromList(freshList),
-                password: generateSecureStaffPassword()
+                password: generateSimpleStaffPassword(),
+                passwordMode: 'auto'
             };
             renderNewAccountForm(employeeId, freshEmployee);
         }
@@ -1789,16 +1874,7 @@ function renderNewAccountForm(employeeId, employee, showResetHint) {
             <label data-lang="zh" style="display:none">登录账号(自动生成)</label>
             <input type="text" id="newAccountUsernameDisplay" class="input-field" value="${pendingStaffAccount.username}" readonly style="font-weight:700; letter-spacing:0.5px;">
         </div>
-        <div class="form-group">
-            <label data-lang="ja">パスワード(自動生成)</label>
-            <label data-lang="zh" style="display:none">密码(自动生成)</label>
-            <div style="display:flex; gap:8px;">
-                <input type="text" id="newAccountPasswordDisplay" class="input-field" value="${pendingStaffAccount.password}" readonly style="font-family:monospace; font-weight:700; letter-spacing:0.5px;">
-                <button type="button" class="btn-secondary" style="flex-shrink:0; padding:0 14px;" onclick="regenerateStaffAccountFields()" title="${currentLanguage === 'ja' ? 'パスワードを再生成' : '重新生成密码'}">
-                    <i class="fas fa-rotate"></i>
-                </button>
-            </div>
-        </div>
+        <div id="newAccountPasswordSection">${renderPasswordSectionHtml('new', employeeId, pendingStaffAccount)}</div>
         <button type="button" class="btn-secondary" style="width:100%; margin-bottom:10px;" onclick="copyStaffAccountCredentials('${employeeId}')">
             <i class="fas fa-copy"></i>
             <span data-lang="ja">ID・パスワードをコピー</span><span data-lang="zh" style="display:none">复制账号和密码</span>
@@ -1840,6 +1916,14 @@ function createEmployeeAccount(employeeId, attemptCount) {
         showMessage(currentLanguage === 'ja' ? 'エラーが発生しました。もう一度開き直してください' : '发生错误，请重新打开此窗口', 'error');
         return;
     }
+
+    // Trường hợp admin tự đặt mật khẩu (chế độ "自分で決める"): kiểm tra đủ 6 ký tự trở lên
+    // theo yêu cầu tối thiểu của Firebase Auth trước khi tạo.
+    if (!isValidStaffPassword(pendingStaffAccount.password)) {
+        showMessage(currentLanguage === 'ja' ? 'パスワードは6文字以上にしてください' : '密码至少需要6位', 'error');
+        return;
+    }
+    pendingStaffAccount.password = pendingStaffAccount.password.trim();
 
     if (!window.secondaryApp || !window.database) {
         showMessage(currentLanguage === 'ja' ? "データベース接続エラー" : "数据库连接错误", "error");
@@ -1954,17 +2038,25 @@ function confirmReissueStaffPassword(employeeId) {
     const body = document.getElementById('accountModalBody');
     if (!body) return;
 
+    // Chuẩn bị sẵn 1 mật khẩu mới kiểu "từ + số" dễ nhớ - admin có thể đổi sang "tự đặt" nếu muốn
+    pendingReissue = {
+        employeeId,
+        password: generateSimpleStaffPassword(),
+        passwordMode: 'auto'
+    };
+
     const msg = currentLanguage === 'ja'
         ? `<strong>${employee.name}</strong> の新しいパスワードを発行しますか？<br>古いパスワードは無効になり、ログインIDはそのまま変わりません。`
         : `确定要为 <strong>${employee.name}</strong> 发放新密码吗？<br>旧密码将立即失效，登录账号保持不变。`;
 
     body.innerHTML = `
-        <div style="text-align:center; padding: 8px 0 20px;">
+        <div style="text-align:center; padding: 8px 0 16px;">
             <i class="fas fa-key" style="font-size:30px; color: var(--primary); margin-bottom:12px;"></i>
             <p style="font-size:14px; color: var(--dark); line-height:1.7; margin:0;">${msg}</p>
         </div>
-        <div style="display:flex; gap:10px;">
-            <button type="button" class="btn-secondary" style="flex:1; margin:0;" onclick="showEmployeeAccountModal('${employeeId}')">
+        <div id="reissuePasswordSection">${renderPasswordSectionHtml('reissue', employeeId, pendingReissue)}</div>
+        <div style="display:flex; gap:10px; margin-top:6px;">
+            <button type="button" class="btn-secondary" style="flex:1; margin:0;" onclick="pendingReissue = null; showEmployeeAccountModal('${employeeId}')">
                 <span data-lang="ja">キャンセル</span><span data-lang="zh" style="display:none">取消</span>
             </button>
             <button type="button" class="btn-primary" id="confirmReissueBtn" style="flex:1; margin:0;" onclick="doReissueStaffPassword('${employeeId}')">
@@ -1984,6 +2076,13 @@ function doReissueStaffPassword(employeeId) {
     const employee = employees.find(e => e.id === employeeId);
     if (!employee || !employee.loginUsername) return;
 
+    // Trường hợp admin tự đặt mật khẩu (chế độ "自分で決める"): kiểm tra đủ 6 ký tự trở lên
+    // theo yêu cầu tối thiểu của Firebase Auth trước khi phát hành.
+    if (!pendingReissue || !isValidStaffPassword(pendingReissue.password)) {
+        showMessage(currentLanguage === 'ja' ? 'パスワードは6文字以上にしてください' : '密码至少需要6位', 'error');
+        return;
+    }
+
     const btn = document.getElementById('confirmReissueBtn');
     if (btn) {
         btn.disabled = true;
@@ -1998,7 +2097,7 @@ function doReissueStaffPassword(employeeId) {
     }
 
     const username = employee.loginUsername;
-    const newPassword = generateSecureStaffPassword();
+    const newPassword = pendingReissue.password.trim();
     // Firebase không cho phép xoá/đổi mật khẩu của user khác từ client, nên tài khoản Auth cũ
     // (mật khẩu quên) sẽ bị "mồ côi" và không dùng được nữa; ta tạo 1 tài khoản Auth MỚI với
     // cùng ID hiển thị nhưng email kỹ thuật tăng version (+1, +2...) để tránh trùng, rồi trỏ
@@ -2025,6 +2124,7 @@ function doReissueStaffPassword(employeeId) {
     .then(() => {
         showMessage(currentLanguage === 'ja' ? '新しいパスワードを発行しました' : '已发放新密码', 'success');
         const updatedEmployee = Object.assign({}, employee, { loginEmail: newTechnicalEmail, loginEmailVersion: version });
+        pendingReissue = null;
         renderAccountExistsView(employeeId, updatedEmployee, newPassword);
     })
     .catch(error => {
