@@ -1,11 +1,14 @@
 // ==================== STAFF PORTAL (trang riêng cho nhân viên) ====================
-// Trang này KHÔNG dùng chung app.js của admin - viết riêng gọn nhẹ, chỉ đọc lịch của
-// chính nhân viên đang đăng nhập + gửi yêu cầu đổi lịch (không sửa lịch trực tiếp).
+// Trang này KHÔNG dùng chung app.js của admin - viết riêng gọn nhẹ. Chỉ còn đúng 2 việc:
+// 1) Xem lịch làm của chính mình (theo tuần / theo tháng)
+// 2) Tự đổi mật khẩu đăng nhập nếu muốn
+// Không còn tính năng gửi yêu cầu/đăng ký gì khác từ trang này.
 
 let currentLang = localStorage.getItem('appLanguage') || 'ja';
 let currentEmployee = null;   // { id, name, position, uid, loginEmail }
+let currentView = 'week';     // 'week' | 'month'
 let currentWeekOffset = 0;
-let cachedRequests = [];
+let currentMonthOffset = 0;
 
 // ID đăng nhập của nhân viên có dạng cố định (VD: KAJICHO01) do admin tạo bên index.html.
 // Vì Firebase Auth (client) bắt buộc định dạng email, domain giả cố định này được ghép thêm
@@ -53,6 +56,19 @@ function generateWeekDays(startDate) {
     return days;
 }
 
+// Thông tin tháng: năm/tháng đang xem, số ngày trong tháng, và vị trí thứ (Thứ 2 = cột đầu
+// tiên, khớp với cách tính tuần Thứ 2 - Chủ nhật đang dùng ở trên + bên admin).
+function getMonthInfo(monthOffset = 0) {
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const year = base.getFullYear();
+    const month = base.getMonth(); // 0-based
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let firstWeekday = new Date(year, month, 1).getDay(); // 0=CN...6=Thứ7
+    firstWeekday = (firstWeekday === 0) ? 6 : firstWeekday - 1; // đổi sang: 0=Thứ2...6=CN
+    return { year, month, daysInMonth, firstWeekday };
+}
+
 function toDateString(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -63,6 +79,27 @@ function toDateString(date) {
 function formatDate(dateString) {
     const d = new Date(dateString);
     return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+// Chuẩn hoá 1 ca làm thành: loại ca (sớm/muộn/nghỉ/chưa xếp) + nhãn hiển thị ngắn gọn.
+// Cùng logic phân loại 早番(trước 17h)/遅番(từ 17h) như bên app.js quản lý.
+function getShiftInfo(schedule) {
+    if (!schedule) {
+        return { cls: 'shift-none', shortLabel: '', fullLabel: currentLang === 'ja' ? '未設定' : '未设置' };
+    }
+    if (schedule.isDayOff) {
+        const label = currentLang === 'ja' ? '休み' : '休息';
+        return { cls: 'shift-rest', shortLabel: label, fullLabel: label };
+    }
+    const start = (schedule.startTime || '').substring(0, 5);
+    const end = (schedule.endTime || '').substring(0, 5);
+    const startHour = parseInt((schedule.startTime || '0').substring(0, 2), 10) || 0;
+    const isLate = startHour >= 17;
+    return {
+        cls: isLate ? 'shift-late' : 'shift-early',
+        shortLabel: start,
+        fullLabel: `${start} - ${end}`
+    };
 }
 
 // ==================== MODAL HELPERS ====================
@@ -110,10 +147,7 @@ function toggleStaffLang() {
     applyLangVisibility();
     if (currentEmployee) {
         renderTopbar();
-        renderSchedule();
-        if (document.getElementById('tabRequests').style.display !== 'none') {
-            renderRequestsList();
-        }
+        renderCurrentView();
     }
 }
 
@@ -145,12 +179,16 @@ function setLoginLoading(loading) {
     }
 }
 
-function toggleLoginPasswordVisibility() {
-    const input = document.getElementById('loginPassword');
-    const icon = document.querySelector('#togglePassBtn i');
+// Dùng chung cho cả ô mật khẩu ở màn đăng nhập lẫn 3 ô trong modal đổi mật khẩu.
+// btnRef có thể là id (string) hoặc chính phần tử <button> (this) tuỳ nơi gọi.
+function togglePasswordVisibility(inputId, btnRef) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const btn = (typeof btnRef === 'string') ? document.getElementById(btnRef) : btnRef;
+    const icon = btn ? btn.querySelector('i') : null;
     const showing = input.type === 'text';
     input.type = showing ? 'password' : 'text';
-    icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
+    if (icon) icon.className = showing ? 'fas fa-eye' : 'fas fa-eye-slash';
 }
 
 function loginErrorMessage(error) {
@@ -186,10 +224,11 @@ function doLogin() {
     setLoginLoading(true);
 
     // Nhân viên chỉ cần nhập ID (VD: KAJICHO01). ID này có thể đang trỏ tới 1 email kỹ thuật
-    // đã được "phát hành lại" (sau khi admin bấm nút cấp mật khẩu mới) - tra cứu loginIndex
-    // trước để lấy đúng email hiện tại; nếu không có trong index (tài khoản tạo lần đầu, chưa
-    // từng đổi mật khẩu) thì dùng luôn mẫu email cơ bản. Nếu ID đã có dạng email đầy đủ (tài
-    // khoản cũ tạo trước khi có tính năng ID cố định) thì giữ nguyên, không tra cứu.
+    // đã được "phát hành lại" (sau khi admin bấm nút cấp mật khẩu mới, HOẶC sau khi chính
+    // nhân viên tự đổi mật khẩu - vẫn cùng 1 tài khoản nên email không đổi) - tra cứu
+    // loginIndex trước để lấy đúng email hiện tại; nếu không có trong index (tài khoản tạo
+    // lần đầu, chưa từng đổi) thì dùng luôn mẫu email cơ bản. Nếu ID đã có dạng email đầy đủ
+    // (tài khoản cũ tạo trước khi có tính năng ID cố định) thì giữ nguyên, không tra cứu.
     const basePattern = rawId.includes('@') ? rawId : `${rawId.toLowerCase()}${STAFF_LOGIN_DOMAIN}`;
     const lookupPromise = rawId.includes('@')
         ? Promise.resolve(null)
@@ -245,7 +284,12 @@ function loadCurrentEmployee(uid) {
         document.getElementById('mainScreen').style.display = 'flex';
         renderTopbar();
         currentWeekOffset = 0;
-        renderSchedule();
+        currentMonthOffset = 0;
+        currentView = 'week';
+        document.querySelectorAll('.staff-view-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.view === 'week'));
+        document.getElementById('weekView').style.display = 'block';
+        document.getElementById('monthView').style.display = 'none';
+        renderCurrentView();
     })
     .catch(error => {
         showToast((currentLang === 'ja' ? '読み込みエラー: ' : '加载错误: ') + error.message, 'error');
@@ -257,28 +301,41 @@ function renderTopbar() {
     document.getElementById('topbarPosition').textContent = positionLabel(currentEmployee.position);
 }
 
-// ==================== TABS ====================
-function switchStaffTab(tab) {
-    document.querySelectorAll('.staff-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tab);
+// ==================== VIEW SWITCH (週 / 月) ====================
+function switchScheduleView(view) {
+    currentView = view;
+    document.querySelectorAll('.staff-view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
     });
-    document.getElementById('tabSchedule').style.display = (tab === 'schedule') ? 'block' : 'none';
-    document.getElementById('tabRequests').style.display = (tab === 'requests') ? 'block' : 'none';
-    if (tab === 'requests') renderRequestsList();
+    document.getElementById('weekView').style.display = (view === 'week') ? 'block' : 'none';
+    document.getElementById('monthView').style.display = (view === 'month') ? 'block' : 'none';
+    renderCurrentView();
 }
 
-// ==================== SCHEDULE ====================
-function changeStaffWeek(delta) {
-    currentWeekOffset += delta;
-    renderSchedule();
+function changeStaffPeriod(delta) {
+    if (currentView === 'week') {
+        currentWeekOffset += delta;
+    } else {
+        currentMonthOffset += delta;
+    }
+    renderCurrentView();
 }
 
-function renderSchedule() {
+function renderCurrentView() {
+    if (currentView === 'week') {
+        renderWeekView();
+    } else {
+        renderMonthView();
+    }
+}
+
+// ==================== WEEK VIEW ====================
+function renderWeekView() {
     if (!currentEmployee) return;
-    const { startDate, endDate } = getWeekDates(currentWeekOffset);
+    const { startDate } = getWeekDates(currentWeekOffset);
     const days = generateWeekDays(startDate);
 
-    document.getElementById('weekLabel').textContent = `${formatDate(days[0].dateString)} - ${formatDate(days[6].dateString)}`;
+    document.getElementById('periodLabel').textContent = `${formatDate(days[0].dateString)} - ${formatDate(days[6].dateString)}`;
 
     const startStr = days[0].dateString;
     const endStr = days[6].dateString;
@@ -288,40 +345,23 @@ function renderSchedule() {
         const data = snapshot.val() || {};
         const weekSchedules = Object.values(data).filter(s => s.date >= startStr && s.date <= endStr);
 
-        const list = document.getElementById('scheduleList');
+        const list = document.getElementById('weekView');
         list.innerHTML = days.map(day => {
             const schedule = weekSchedules.find(s => s.date === day.dateString);
             const dow = currentLang === 'ja' ? day.dowJa : day.dowZh;
-            let statusClass = 'none';
-            let statusText = currentLang === 'ja' ? '未設定' : '未设置';
-            let subText = '';
-
-            if (schedule) {
-                if (schedule.isDayOff) {
-                    statusClass = 'rest';
-                    statusText = currentLang === 'ja' ? '休み' : '休息';
-                } else {
-                    statusClass = 'work';
-                    const start = (schedule.startTime || '').substring(0, 5);
-                    const end = (schedule.endTime || '').substring(0, 5);
-                    statusText = `${start} - ${end}`;
-                    subText = positionLabel(schedule.employeePosition || currentEmployee.position);
-                }
-            }
+            const info = getShiftInfo(schedule);
+            const subText = (schedule && !schedule.isDayOff) ? positionLabel(schedule.employeePosition || currentEmployee.position) : '';
 
             return `
-                <div class="staff-day-row ${day.isToday ? 'today' : ''}">
+                <div class="staff-day-row ${day.isToday ? 'today' : info.cls}">
                     <div class="staff-day-date">
                         <div class="dow">${dow}</div>
                         <div class="num">${day.date}</div>
                     </div>
                     <div class="staff-day-info">
-                        <div class="staff-day-status ${statusClass}">${statusText}</div>
+                        <div class="staff-day-status ${info.cls}">${info.fullLabel}</div>
                         ${subText ? `<div class="staff-day-sub">${subText}</div>` : ''}
                     </div>
-                    <button type="button" class="staff-request-btn" onclick="openRequestForm('${day.dateString}')">
-                        <i class="fas fa-pen"></i> ${currentLang === 'ja' ? '申請' : '申请'}
-                    </button>
                 </div>
             `;
         }).join('');
@@ -331,86 +371,132 @@ function renderSchedule() {
     });
 }
 
-// ==================== REQUEST FORM ====================
-// Từ bản này chỉ còn lại 1 tính năng duy nhất: gửi lưu ý/tin nhắn tự do cho bên quản lý
-// (không còn đăng ký nghỉ / đổi giờ trực tiếp từ trang nhân viên nữa - luôn gửi dạng "other").
-function openRequestForm(prefillDate) {
-    document.getElementById('reqDate').value = prefillDate || toDateString(new Date());
-    document.getElementById('reqNote').value = '';
-    openStaffModal('requestModal');
-}
-
-function submitStaffRequest() {
-    const date = document.getElementById('reqDate').value;
-    const note = document.getElementById('reqNote').value.trim();
-
-    if (!date) {
-        showToast(currentLang === 'ja' ? '日付を選択してください' : '请选择日期', 'warning');
-        return;
-    }
-    if (!note) {
-        showToast(currentLang === 'ja' ? '内容を入力してください' : '请输入内容', 'warning');
-        return;
-    }
-
-    const requestData = {
-        employeeId: currentEmployee.id,
-        employeeName: currentEmployee.name,
-        date: date,
-        type: 'other',
-        note: note,
-        status: 'pending',
-        createdAt: Date.now()
-    };
-
-    window.database.ref('changeRequests').push(requestData)
-    .then(() => {
-        closeStaffModal('requestModal');
-        showToast(currentLang === 'ja' ? '送信しました' : '已提交', 'success');
-        switchStaffTab('requests');
-    })
-    .catch(error => {
-        showToast((currentLang === 'ja' ? '送信失敗: ' : '提交失败: ') + error.message, 'error');
-    });
-}
-
-// ==================== REQUESTS LIST ====================
-function renderRequestsList() {
+// ==================== MONTH VIEW ====================
+function renderMonthView() {
     if (!currentEmployee) return;
-    window.database.ref('changeRequests').orderByChild('employeeId').equalTo(currentEmployee.id).once('value')
+    const { year, month, daysInMonth, firstWeekday } = getMonthInfo(currentMonthOffset);
+
+    document.getElementById('periodLabel').textContent = currentLang === 'ja'
+        ? `${year}年${month + 1}月`
+        : `${year}年${month + 1}月`;
+
+    const dowJa = ['月', '火', '水', '木', '金', '土', '日'];
+    const dowZh = ['一', '二', '三', '四', '五', '六', '日'];
+    const dowRow = document.getElementById('monthDowRow');
+    dowRow.innerHTML = (currentLang === 'ja' ? dowJa : dowZh).map(d => `<div>${d}</div>`).join('');
+
+    const startStr = toDateString(new Date(year, month, 1));
+    const endStr = toDateString(new Date(year, month, daysInMonth));
+    const todayStr = toDateString(new Date());
+
+    window.database.ref('schedules').orderByChild('employeeId').equalTo(currentEmployee.id).once('value')
     .then(snapshot => {
         const data = snapshot.val() || {};
-        cachedRequests = Object.entries(data).map(([id, r]) => ({ id, ...r })).sort((a, b) => b.createdAt - a.createdAt);
+        const monthSchedules = Object.values(data).filter(s => s.date >= startStr && s.date <= endStr);
 
-        const list = document.getElementById('requestsList');
-        if (cachedRequests.length === 0) {
-            list.innerHTML = `
-                <div class="staff-empty">
-                    <i class="fas fa-inbox"></i>
-                    <div>${currentLang === 'ja' ? 'リクエストはまだありません' : '还没有申请记录'}</div>
+        const cells = [];
+        for (let i = 0; i < firstWeekday; i++) {
+            cells.push('<div class="staff-month-cell empty"></div>');
+        }
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateString = toDateString(new Date(year, month, day));
+            const schedule = monthSchedules.find(s => s.date === dateString);
+            const info = getShiftInfo(schedule);
+            const isToday = dateString === todayStr;
+            cells.push(`
+                <div class="staff-month-cell ${info.cls} ${isToday ? 'today' : ''}">
+                    <div class="cell-num">${day}</div>
+                    ${info.shortLabel ? `<div class="cell-time">${info.shortLabel}</div>` : ''}
                 </div>
-            `;
-            return;
+            `);
         }
 
-        const typeLabel = { dayoff: currentLang === 'ja' ? '休み希望' : '请假', time_change: currentLang === 'ja' ? '時間変更' : '改时间', other: currentLang === 'ja' ? 'その他' : '其他' };
-        const statusLabel = { pending: currentLang === 'ja' ? '審査中' : '待审核', approved: currentLang === 'ja' ? '承認済み' : '已批准', rejected: currentLang === 'ja' ? '却下' : '已拒绝' };
-
-        list.innerHTML = cachedRequests.map(r => `
-            <div class="staff-req-item">
-                <div class="staff-req-top">
-                    <div class="staff-req-date">${formatDate(r.date)} · ${typeLabel[r.type] || r.type}</div>
-                    <div class="staff-req-status ${r.status}">${statusLabel[r.status] || r.status}</div>
-                </div>
-                <div class="staff-req-body">
-                    ${r.type === 'time_change' && r.requestedStartTime ? `${r.requestedStartTime} - ${r.requestedEndTime}<br>` : ''}
-                    ${r.note ? r.note : ''}
-                </div>
-            </div>
-        `).join('');
+        document.getElementById('monthGrid').innerHTML = cells.join('');
     })
     .catch(error => {
         showToast((currentLang === 'ja' ? '読み込みエラー: ' : '加载错误: ') + error.message, 'error');
+    });
+}
+
+// ==================== ĐỔI MẬT KHẨU (tự phục vụ, nhân viên tự đổi nếu muốn) ====================
+function showPwError(msg) {
+    const box = document.getElementById('pwError');
+    document.getElementById('pwErrorText').textContent = msg;
+    box.style.display = 'flex';
+}
+
+function hidePwError() {
+    document.getElementById('pwError').style.display = 'none';
+}
+
+function openChangePasswordModal() {
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmNewPassword').value = '';
+    hidePwError();
+    openStaffModal('changePasswordModal');
+}
+
+function changePasswordErrorMessage(error) {
+    const code = error && error.code;
+    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        return currentLang === 'ja' ? '現在のパスワードが正しくありません' : '当前密码不正确';
+    }
+    if (code === 'auth/too-many-requests') {
+        return currentLang === 'ja' ? '試行回数が多すぎます。しばらくしてからもう一度お試しください' : '尝试次数过多，请稍后再试';
+    }
+    if (code === 'auth/network-request-failed') {
+        return currentLang === 'ja' ? 'ネットワークに接続できません' : '网络连接失败';
+    }
+    if (code === 'auth/weak-password') {
+        return currentLang === 'ja' ? 'パスワードは6文字以上にしてください' : '密码至少需要6位';
+    }
+    return currentLang === 'ja' ? '変更に失敗しました。もう一度お試しください' : '修改失败，请重试';
+}
+
+function doChangeMyPassword() {
+    hidePwError();
+    const current = document.getElementById('currentPassword').value.trim();
+    const next = document.getElementById('newPassword').value.trim();
+    const confirmNext = document.getElementById('confirmNewPassword').value.trim();
+
+    if (!current || !next || !confirmNext) {
+        showPwError(currentLang === 'ja' ? 'すべて入力してください' : '请填写所有栏位');
+        return;
+    }
+    if (next.length < 6) {
+        showPwError(currentLang === 'ja' ? '新しいパスワードは6文字以上にしてください' : '新密码至少需要6位');
+        return;
+    }
+    if (next !== confirmNext) {
+        showPwError(currentLang === 'ja' ? '新しいパスワードが一致しません' : '两次输入的新密码不一致');
+        return;
+    }
+    if (!currentEmployee || !currentEmployee.loginEmail || !window.auth.currentUser) {
+        showPwError(currentLang === 'ja' ? 'エラーが発生しました。再ログインしてください' : '发生错误，请重新登录');
+        return;
+    }
+
+    const btn = document.getElementById('changePwBtn');
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+
+    // Firebase yêu cầu xác thực lại (reauthenticate) trước khi cho phép tự đổi mật khẩu của
+    // chính mình, để đảm bảo đúng là chủ tài khoản đang thao tác (không chỉ dựa vào phiên
+    // đăng nhập cũ còn hiệu lực).
+    const credential = firebase.auth.EmailAuthProvider.credential(currentEmployee.loginEmail, current);
+    window.auth.currentUser.reauthenticateWithCredential(credential)
+    .then(() => window.auth.currentUser.updatePassword(next))
+    .then(() => {
+        showToast(currentLang === 'ja' ? 'パスワードを変更しました' : '密码已修改', 'success');
+        closeStaffModal('changePasswordModal');
+    })
+    .catch(error => {
+        showPwError(changePasswordErrorMessage(error));
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.style.opacity = '';
     });
 }
 

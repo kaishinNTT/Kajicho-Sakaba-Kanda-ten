@@ -12,7 +12,7 @@
     <style>
         html, body { min-height: 100vh; }
         body.staff-body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(160deg, #eef2ff 0%, #e0f2fe 45%, #f0fdfa 100%);
         }
         .staff-app {
             width: 100%;
@@ -40,42 +40,44 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 28px 24px;
+            padding: 36px 26px;
         }
-        .staff-login-logo { text-align: center; margin-bottom: 22px; }
+        .staff-login-logo { text-align: center; margin-bottom: 28px; }
         .staff-login-logo .badge-icon {
-            width: 56px; height: 56px;
-            margin: 0 auto 12px;
-            border-radius: 16px;
+            width: 60px; height: 60px;
+            margin: 0 auto 14px;
+            border-radius: 18px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             display: flex; align-items: center; justify-content: center;
             box-shadow: var(--shadow-md);
         }
         .staff-login-logo .badge-icon i { font-size: 1.5rem; color: white; }
-        .staff-login-logo h1 { font-size: 1.05rem; color: var(--dark); font-weight: 700; line-height: 1.4; }
-        .staff-login-logo .sub { font-size: 12.5px; color: var(--gray-500); font-weight: 500; margin-top: 2px; }
+        .staff-login-logo h1 { font-size: 1.05rem; color: var(--dark); font-weight: 800; line-height: 1.5; }
+        .staff-login-logo .sub { font-size: 13px; color: var(--gray-500); font-weight: 600; margin-top: 4px; }
 
         .staff-login-error {
             background: var(--danger-light);
             color: var(--danger);
             border-radius: var(--border-radius-sm);
-            padding: 10px 14px;
+            padding: 12px 14px;
             font-size: 13px;
             font-weight: 600;
-            margin-bottom: 14px;
+            line-height: 1.5;
+            margin-bottom: 16px;
             display: none;
-            align-items: center;
+            align-items: flex-start;
             gap: 8px;
         }
+        .staff-login-error i { margin-top: 1px; flex-shrink: 0; }
 
         /* Input với icon nhúng bên trái, gọn hơn ô input mặc định của app */
-        .staff-field { margin-bottom: 14px; }
+        .staff-field { margin-bottom: 16px; }
         .staff-field label {
             display: block;
-            font-size: 12px;
+            font-size: 12.5px;
             font-weight: 700;
-            color: var(--gray-500);
-            margin-bottom: 6px;
+            color: var(--gray-600);
+            margin-bottom: 7px;
         }
         .staff-input-wrap { position: relative; }
         .staff-input-wrap i.field-icon {
@@ -88,10 +90,11 @@
         }
         .staff-input-wrap input {
             width: 100%;
-            padding: 13px 14px 13px 40px;
+            padding: 14px 14px 14px 42px;
             border: 1.5px solid var(--border);
             border-radius: var(--border-radius-sm);
             font-size: 15px;
+            line-height: 1.4;
             font-family: inherit;
             background: var(--gray-50);
             transition: all var(--transition-fast);
@@ -103,11 +106,20 @@
             box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
         }
         .staff-input-wrap input#loginId { text-transform: uppercase; letter-spacing: 0.5px; }
+        /* Ô mật khẩu có thêm nút hiện/ẩn bên phải -> luôn chừa sẵn padding-right cố định
+           (không dùng :has() vì 1 số webview trong app chat - Zalo/Messenger/FB - dùng
+           engine cũ chưa hỗ trợ :has(), khiến chữ bị nút hiện/ẩn đè lên) */
+        .staff-input-wrap input#loginPassword,
+        .staff-input-wrap input#currentPassword,
+        .staff-input-wrap input#newPassword,
+        .staff-input-wrap input#confirmNewPassword {
+            padding-right: 44px;
+        }
         .staff-toggle-pass {
             position: absolute;
-            right: 6px; top: 50%;
+            right: 4px; top: 50%;
             transform: translateY(-50%);
-            width: 32px; height: 32px;
+            width: 36px; height: 36px;
             border: none;
             background: none;
             color: var(--gray-400);
@@ -115,33 +127,35 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 14px;
         }
-        .staff-input-wrap:has(.staff-toggle-pass) input { padding-right: 40px; }
 
         .staff-login-btn {
             width: 100%;
-            margin-top: 6px;
+            margin-top: 8px;
+            padding: 14px;
+            font-size: 15px;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .staff-login-btn:disabled { opacity: 0.7; cursor: default; }
         .staff-lang-switch {
-            text-align: center; margin-top: 18px;
+            text-align: center; margin-top: 20px;
         }
         .staff-lang-switch button {
             background: var(--gray-50);
             border: 1px solid var(--border);
-            color: var(--gray-500);
-            font-size: 12px;
+            color: var(--gray-600);
+            font-size: 12.5px;
             font-weight: 600;
             cursor: pointer;
-            padding: 6px 14px;
+            padding: 7px 16px;
             border-radius: 20px;
         }
         .staff-login-hint {
             text-align: center;
-            font-size: 11.5px;
+            font-size: 12px;
             color: var(--gray-400);
-            margin-top: 14px;
-            line-height: 1.5;
+            margin-top: 18px;
+            line-height: 1.6;
+            padding: 0 8px;
         }
 
         /* ---------- MAIN ---------- */
@@ -150,16 +164,16 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 16px;
+            padding: 14px 16px;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             color: white;
             flex-shrink: 0;
         }
-        .staff-topbar-name { font-weight: 700; font-size: 0.95rem; line-height: 1.3; }
-        .staff-topbar-position { font-size: 11.5px; opacity: 0.9; }
-        .staff-topbar-actions { display: flex; gap: 8px; }
+        .staff-topbar-name { font-weight: 700; font-size: 0.98rem; line-height: 1.4; }
+        .staff-topbar-position { font-size: 12px; opacity: 0.92; margin-top: 1px; }
+        .staff-topbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
         .staff-icon-btn {
-            width: 32px; height: 32px;
+            width: 34px; height: 34px;
             border-radius: 50%;
             background: rgba(255,255,255,0.2);
             color: white;
@@ -168,98 +182,120 @@
             cursor: pointer;
             font-size: 13px;
         }
-        .staff-tabs {
+
+        /* Chuyển đổi Tuần / Tháng */
+        .staff-view-switch {
             display: flex;
-            border-bottom: 1px solid var(--border);
+            gap: 6px;
+            padding: 12px 14px 0;
             flex-shrink: 0;
         }
-        .staff-tab {
+        .staff-view-btn {
             flex: 1;
-            padding: 10px;
+            padding: 9px;
             text-align: center;
-            font-size: 12.5px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--gray-500);
-            background: none;
+            background: var(--gray-100);
             border: none;
-            border-bottom: 3px solid transparent;
+            border-radius: var(--border-radius-sm);
             cursor: pointer;
         }
-        .staff-tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
+        .staff-view-btn.active {
+            color: white;
+            background: var(--primary);
         }
-        .staff-content { flex: 1; padding: 12px 12px 84px; overflow-y: auto; }
-        .staff-week-nav {
+
+        .staff-content { flex: 1; padding: 14px; overflow-y: auto; }
+
+        .staff-period-nav {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
-        .staff-week-nav .week-label { font-weight: 700; color: var(--dark); font-size: 13px; }
+        .staff-period-nav .period-label { font-weight: 800; color: var(--dark); font-size: 14.5px; }
+        .staff-period-nav .staff-icon-btn { background: var(--gray-100); color: var(--dark); }
+
+        /* Week list */
         .staff-day-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border: 1px solid var(--border);
+            gap: 12px;
+            padding: 12px;
+            border: 1.5px solid var(--border);
             border-radius: var(--border-radius-sm);
+            margin-bottom: 8px;
+            border-left-width: 4px;
+        }
+        .staff-day-row.today { border-color: var(--primary); background: var(--primary-light); border-left-color: var(--primary); }
+        .staff-day-row.shift-early { border-left-color: var(--early-shift); }
+        .staff-day-row.shift-late { border-left-color: var(--late-shift); }
+        .staff-day-row.shift-rest { border-left-color: var(--warning); }
+        .staff-day-row.shift-none { border-left-color: var(--border); }
+        .staff-day-date { width: 44px; text-align: center; flex-shrink: 0; }
+        .staff-day-date .dow { font-size: 10.5px; color: var(--gray-500); font-weight: 700; }
+        .staff-day-date .num { font-size: 1.05rem; font-weight: 800; color: var(--dark); }
+        .staff-day-info { flex: 1; min-width: 0; }
+        .staff-day-status { font-weight: 800; font-size: 14px; display:flex; align-items:center; gap:6px; }
+        .staff-day-status.shift-early { color: var(--early-shift); }
+        .staff-day-status.shift-late { color: var(--late-shift); }
+        .staff-day-status.shift-rest { color: var(--warning); }
+        .staff-day-status.shift-none { color: var(--gray-400); }
+        .staff-day-sub { font-size: 11.5px; color: var(--gray-500); margin-top: 2px; }
+
+        /* Month calendar grid */
+        .staff-month-dow-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
             margin-bottom: 6px;
         }
-        .staff-day-row.today { border-color: var(--primary); background: var(--primary-light); }
-        .staff-day-date { width: 42px; text-align: center; flex-shrink: 0; }
-        .staff-day-date .dow { font-size: 10px; color: var(--gray-500); font-weight: 700; }
-        .staff-day-date .num { font-size: 1rem; font-weight: 800; color: var(--dark); }
-        .staff-day-info { flex: 1; min-width: 0; }
-        .staff-day-status { font-weight: 700; font-size: 13px; }
-        .staff-day-status.work { color: var(--success); }
-        .staff-day-status.rest { color: var(--warning); }
-        .staff-day-status.none { color: var(--gray-400); }
-        .staff-day-sub { font-size: 11px; color: var(--gray-500); margin-top: 1px; }
-        .staff-request-btn {
-            background: none;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 4px 10px;
-            font-size: 10.5px;
+        .staff-month-dow-row div {
+            text-align: center;
+            font-size: 11px;
             font-weight: 700;
-            color: var(--gray-600);
-            cursor: pointer;
-            flex-shrink: 0;
+            color: var(--gray-400);
+            padding-bottom: 4px;
         }
-        .staff-req-item {
-            border: 1px solid var(--border);
-            border-radius: var(--border-radius-sm);
-            padding: 11px 12px;
-            margin-bottom: 8px;
+        .staff-month-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
         }
-        .staff-req-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .staff-req-date { font-weight: 700; color: var(--dark); font-size: 13px; }
-        .staff-req-status {
-            font-size: 10.5px;
-            font-weight: 800;
-            padding: 3px 10px;
-            border-radius: 20px;
+        .staff-month-cell {
+            aspect-ratio: 1 / 1.05;
+            border-radius: 8px;
+            padding: 4px 3px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            font-size: 10px;
+            background: var(--gray-50);
+            border: 1px solid transparent;
         }
-        .staff-req-status.pending { background: var(--warning-light); color: var(--warning); }
-        .staff-req-status.approved { background: var(--success-light); color: var(--success); }
-        .staff-req-status.rejected { background: var(--danger-light); color: var(--danger); }
-        .staff-req-body { font-size: 12.5px; color: var(--gray-600); }
-        .staff-empty { text-align: center; padding: 34px 20px; color: var(--gray-400); }
+        .staff-month-cell.empty { background: none; }
+        .staff-month-cell.today { border-color: var(--primary); }
+        .staff-month-cell .cell-num { font-weight: 800; font-size: 12px; color: var(--dark); margin-bottom: 2px; }
+        .staff-month-cell.shift-early { background: var(--early-shift-light); }
+        .staff-month-cell.shift-early .cell-num { color: var(--early-shift); }
+        .staff-month-cell.shift-late { background: var(--late-shift-light); }
+        .staff-month-cell.shift-late .cell-num { color: var(--late-shift); }
+        .staff-month-cell.shift-rest { background: var(--warning-light); }
+        .staff-month-cell.shift-rest .cell-num { color: var(--warning); }
+        .staff-month-cell .cell-time { font-size: 9px; color: var(--gray-600); font-weight: 600; line-height: 1.2; text-align: center; }
+
+        .staff-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+        .staff-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gray-500); }
+        .staff-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+        .staff-empty { text-align: center; padding: 40px 20px; color: var(--gray-400); }
         .staff-empty i { font-size: 1.8rem; margin-bottom: 8px; display: block; }
-        .staff-fab {
-            position: absolute;
-            right: 18px;
-            bottom: 84px;
-            width: 50px; height: 50px;
-            border-radius: 50%;
-            background: var(--primary);
-            color: white;
-            border: none;
-            font-size: 19px;
-            box-shadow: var(--shadow-lg);
-            cursor: pointer;
-        }
+
+        /* Modal đổi mật khẩu - dùng lại .modal/.modal-content của style.css */
+        .staff-pw-hint { font-size: 11.5px; color: var(--gray-400); margin: -6px 0 14px; line-height: 1.6; }
     </style>
 </head>
 <body class="staff-body">
@@ -269,7 +305,7 @@
         <!-- LOGIN SCREEN -->
         <div class="staff-login-wrap" id="loginScreen">
             <div class="staff-login-logo">
-                <div class="badge-icon"><i class="fas fa-calendar-user"></i></div>
+                <div class="badge-icon"><i class="fas fa-calendar-check"></i></div>
                 <h1>鍛治町酒場 神田店</h1>
                 <div class="sub" data-lang="ja">マイスケジュール</div>
                 <div class="sub" data-lang="zh">我的排班</div>
@@ -292,7 +328,7 @@
                     <div class="staff-input-wrap">
                         <i class="fas fa-lock field-icon"></i>
                         <input type="password" id="loginPassword" placeholder="••••••" autocomplete="current-password">
-                        <button type="button" class="staff-toggle-pass" id="togglePassBtn" onclick="toggleLoginPasswordVisibility()" tabindex="-1" aria-label="show password">
+                        <button type="button" class="staff-toggle-pass" id="togglePassBtn" onclick="togglePasswordVisibility('loginPassword', 'togglePassBtn')" tabindex="-1" aria-label="show password">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -321,6 +357,9 @@
                     <div class="staff-topbar-position" id="topbarPosition">-</div>
                 </div>
                 <div class="staff-topbar-actions">
+                    <button type="button" class="staff-icon-btn" onclick="openChangePasswordModal()" title="Password">
+                        <i class="fas fa-key"></i>
+                    </button>
                     <button type="button" class="staff-icon-btn" onclick="toggleStaffLang()" title="言語">
                         <i class="fas fa-globe"></i>
                     </button>
@@ -330,63 +369,94 @@
                 </div>
             </div>
 
-            <div class="staff-tabs">
-                <button type="button" class="staff-tab active" data-tab="schedule" onclick="switchStaffTab('schedule')">
-                    <i class="fas fa-calendar-week"></i> <span data-lang="ja">シフト</span><span data-lang="zh">排班</span>
+            <div class="staff-view-switch">
+                <button type="button" class="staff-view-btn active" data-view="week" onclick="switchScheduleView('week')">
+                    <i class="fas fa-calendar-week"></i> <span data-lang="ja">週</span><span data-lang="zh">周</span>
                 </button>
-                <button type="button" class="staff-tab" data-tab="requests" onclick="switchStaffTab('requests')">
-                    <i class="fas fa-paper-plane"></i> <span data-lang="ja">リクエスト</span><span data-lang="zh">申请</span>
+                <button type="button" class="staff-view-btn" data-view="month" onclick="switchScheduleView('month')">
+                    <i class="fas fa-calendar-days"></i> <span data-lang="ja">月</span><span data-lang="zh">月</span>
                 </button>
             </div>
 
-            <!-- Schedule tab -->
-            <div class="staff-content" id="tabSchedule">
-                <div class="staff-week-nav">
-                    <button type="button" class="staff-icon-btn" style="background:var(--gray-100); color:var(--dark);" onclick="changeStaffWeek(-1)">
+            <div class="staff-content">
+                <div class="staff-period-nav">
+                    <button type="button" class="staff-icon-btn" onclick="changeStaffPeriod(-1)">
                         <i class="fas fa-chevron-left"></i>
                     </button>
-                    <div class="week-label" id="weekLabel">-</div>
-                    <button type="button" class="staff-icon-btn" style="background:var(--gray-100); color:var(--dark);" onclick="changeStaffWeek(1)">
+                    <div class="period-label" id="periodLabel">-</div>
+                    <button type="button" class="staff-icon-btn" onclick="changeStaffPeriod(1)">
                         <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
-                <div id="scheduleList"></div>
-            </div>
 
-            <!-- Requests tab -->
-            <div class="staff-content" id="tabRequests" style="display:none;">
-                <div id="requestsList"></div>
-            </div>
+                <!-- Week view -->
+                <div id="weekView"></div>
 
-            <button type="button" class="staff-fab" onclick="openRequestForm()" title="Request">
-                <i class="fas fa-plus"></i>
-            </button>
+                <!-- Month view -->
+                <div id="monthView" style="display:none;">
+                    <div class="staff-month-dow-row" id="monthDowRow"></div>
+                    <div class="staff-month-grid" id="monthGrid"></div>
+                </div>
+
+                <div class="staff-legend">
+                    <div class="staff-legend-item"><span class="staff-legend-dot" style="background:var(--early-shift);"></span><span data-lang="ja">早番</span><span data-lang="zh">早班</span></div>
+                    <div class="staff-legend-item"><span class="staff-legend-dot" style="background:var(--late-shift);"></span><span data-lang="ja">遅番</span><span data-lang="zh">晚班</span></div>
+                    <div class="staff-legend-item"><span class="staff-legend-dot" style="background:var(--warning);"></span><span data-lang="ja">休み</span><span data-lang="zh">休息</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Request Form Modal (chỉ còn 1 tính năng duy nhất: gửi lưu ý/tin nhắn cho bên quản lý) -->
-    <div class="modal" id="requestModal">
+    <!-- Đổi mật khẩu -->
+    <div class="modal" id="changePasswordModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-comment-dots"></i> <span data-lang="ja">本社への連絡</span><span data-lang="zh">给店长留言</span></h3>
-                <button type="button" class="modal-close" onclick="closeStaffModal('requestModal')">
+                <h3><i class="fas fa-key"></i> <span data-lang="ja">パスワード変更</span><span data-lang="zh">修改密码</span></h3>
+                <button type="button" class="modal-close" onclick="closeStaffModal('changePasswordModal')">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label data-lang="ja">関連する日付</label>
-                    <label data-lang="zh">相关日期</label>
-                    <input type="date" id="reqDate" class="input-field">
+                <div class="staff-login-error" id="pwError">
+                    <i class="fas fa-circle-exclamation"></i><span id="pwErrorText"></span>
                 </div>
                 <div class="form-group">
-                    <label data-lang="ja">内容</label>
-                    <label data-lang="zh">内容</label>
-                    <textarea id="reqNote" class="input-field" rows="4" placeholder="..."></textarea>
+                    <label data-lang="ja">現在のパスワード</label>
+                    <label data-lang="zh">当前密码</label>
+                    <div class="staff-input-wrap">
+                        <input type="password" id="currentPassword" class="input-field" autocomplete="current-password">
+                        <button type="button" class="staff-toggle-pass" onclick="togglePasswordVisibility('currentPassword', this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
-                <button type="button" class="btn-primary" style="width:100%;" onclick="submitStaffRequest()">
-                    <i class="fas fa-paper-plane"></i>
-                    <span data-lang="ja">送信</span><span data-lang="zh">提交</span>
+                <div class="form-group">
+                    <label data-lang="ja">新しいパスワード</label>
+                    <label data-lang="zh">新密码</label>
+                    <div class="staff-input-wrap">
+                        <input type="password" id="newPassword" class="input-field" autocomplete="new-password">
+                        <button type="button" class="staff-toggle-pass" onclick="togglePasswordVisibility('newPassword', this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-lang="ja">新しいパスワード(確認)</label>
+                    <label data-lang="zh">确认新密码</label>
+                    <div class="staff-input-wrap">
+                        <input type="password" id="confirmNewPassword" class="input-field" autocomplete="new-password">
+                        <button type="button" class="staff-toggle-pass" onclick="togglePasswordVisibility('confirmNewPassword', this)" tabindex="-1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="staff-pw-hint">
+                    <span data-lang="ja">※ 6文字以上、自分の覚えやすいものでOKです。</span>
+                    <span data-lang="zh">※ 6位以上，设置自己容易记住的密码即可。</span>
+                </p>
+                <button type="button" class="btn-primary" style="width:100%;" id="changePwBtn" onclick="doChangeMyPassword()">
+                    <i class="fas fa-check"></i>
+                    <span data-lang="ja">変更する</span><span data-lang="zh">确认修改</span>
                 </button>
             </div>
         </div>
